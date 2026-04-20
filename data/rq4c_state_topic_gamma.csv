@@ -1,0 +1,141 @@
+state,topic,topic_label,mean_gamma,n_bills
+CA,1,Involuntary & Inpatient Treatment,0.06983784392611285,238
+CA,2,Drug Crime & Penalties,4.247248432141363e-4,238
+CA,3,Maternal & Prenatal Health,0.006599942553759735,238
+CA,4,General Regulatory Procedures,0.027107962395642553,238
+CA,8,Healthcare Facilities & Licensing,2.3551311806648648e-4,238
+CA,9,Advisory Bodies & Task Forces,0.05219553035723108,238
+CA,10,Workforce Licensing,0.03678783552220968,238
+CA,11,Policy Equity & Conditions,0.009578703369434928,238
+CA,12,Budget & Fiscal Provisions,0.006705973310350302,238
+CA,13,Licensing & Privacy Records,0.012972437231927269,238
+CA,15,Corporate & Regulatory,0.0017853322968206455,238
+CA,16,Insurance & Medicaid Coverage,0.0584451197468098,238
+CA,18,Education & Community,0.10527487511986665,238
+CA,19,Criminal Justice,0.02395176188693765,238
+FL,1,Involuntary & Inpatient Treatment,0.009400747697550001,292
+FL,2,Drug Crime & Penalties,0.003698893816022636,292
+FL,3,Maternal & Prenatal Health,8.985072538333256e-4,292
+FL,4,General Regulatory Procedures,0.015552048603167144,292
+FL,8,Healthcare Facilities & Licensing,0.0038980767059663317,292
+FL,9,Advisory Bodies & Task Forces,0.030271170113708893,292
+FL,10,Workforce Licensing,0.03994672562874426,292
+FL,11,Policy Equity & Conditions,0.014877271020195496,292
+FL,12,Budget & Fiscal Provisions,8.187641231897415e-4,292
+FL,13,Licensing & Privacy Records,0.04871913521990542,292
+FL,15,Corporate & Regulatory,0.0032574093072141605,292
+FL,16,Insurance & Medicaid Coverage,0.06483895096940463,292
+FL,18,Education & Community,0.10968473096345785,292
+FL,19,Criminal Justice,0.017020801583896225,292
+GA,1,Involuntary & Inpatient Treatment,0.039112857560195,92
+GA,2,Drug Crime & Penalties,0.014204039986757325,92
+GA,3,Maternal & Prenatal Health,0.005436564719120176,92
+GA,4,General Regulatory Procedures,0.016433607591360207,92
+GA,8,Healthcare Facilities & Licensing,2.0442458235825765e-4,92
+GA,9,Advisory Bodies & Task Forces,0.09201496478499505,92
+GA,10,Workforce Licensing,0.011285101014777454,92
+GA,11,Policy Equity & Conditions,0.011597963837391739,92
+GA,12,Budget & Fiscal Provisions,0.0013992001031120972,92
+GA,13,Licensing & Privacy Records,0.020720002994125186,92
+GA,15,Corporate & Regulatory,2.0442458235825624e-4,92
+GA,16,Insurance & Medicaid Coverage,0.1860394100370257,92
+GA,18,Education & Community,0.20640388136886476,92
+GA,19,Criminal Justice,0.12902781559673093,92
+IL,1,Involuntary & Inpatient Treatment,0.022657388426206716,715
+IL,2,Drug Crime & Penalties,0.0016064856697115177,715
+IL,3,Maternal & Prenatal Health,0.032926312347912295,715
+IL,4,General Regulatory Procedures,0.02463778879590859,715
+IL,8,Healthcare Facilities & Licensing,3.8116523585740136e-4,715
+IL,9,Advisory Bodies & Task Forces,0.09320255342793024,715
+IL,10,Workforce Licensing,0.021564644007632725,715
+IL,11,Policy Equity & Conditions,0.031466958973289404,715
+IL,12,Budget & Fiscal Provisions,0.015389875026139962,715
+IL,13,Licensing & Privacy Records,0.006104599046605473,715
+IL,15,Corporate & Regulatory,7.543879640324192e-4,715
+IL,16,Insurance & Medicaid Coverage,0.051071419166973775,715
+IL,18,Education & Community,0.0720979511727812,715
+IL,19,Criminal Justice,0.1439731962686048,715
+NY,1,Involuntary & Inpatient Treatment,0.012896394083870872,1059
+NY,2,Drug Crime & Penalties,0.002575787279673426,1059
+NY,3,Maternal & Prenatal Health,0.006688057941251215,1059
+NY,4,General Regulatory Procedures,0.01286954039294924,1059
+NY,8,Healthcare Facilities & Licensing,0.010621395588615613,1059
+NY,9,Advisory Bodies & Task Forces,0.0676260909306373,1059
+NY,10,Workforce Licensing,0.027421152302135075,1059
+NY,11,Policy Equity & Conditions,0.006986900278526242,1059
+NY,12,Budget & Fiscal Provisions,0.054708935102640036,1059
+NY,13,Licensing & Privacy Records,0.01130926573315704,1059
+NY,15,Corporate & Regulatory,0.0067956090207795215,1059
+NY,16,Insurance & Medicaid Coverage,0.0432645258630905,1059
+NY,18,Education & Community,0.059473626896440986,1059
+NY,19,Criminal Justice,0.03996120357332483,1059
+OH,1,Involuntary & Inpatient Treatment,0.1096235425589481,51
+OH,2,Drug Crime & Penalties,0.13263060362981952,51
+OH,3,Maternal & Prenatal Health,0.03656907572440304,51
+OH,4,General Regulatory Procedures,0.045918432160804656,51
+OH,8,Healthcare Facilities & Licensing,2.0177011669153647e-4,51
+OH,9,Advisory Bodies & Task Forces,0.03283027906512211,51
+OH,10,Workforce Licensing,0.02547015554233825,51
+OH,11,Policy Equity & Conditions,0.058467208683025726,51
+OH,12,Budget & Fiscal Provisions,0.0013375265694598186,51
+OH,13,Licensing & Privacy Records,0.042153777982102666,51
+OH,15,Corporate & Regulatory,0.19629406787209253,51
+OH,16,Insurance & Medicaid Coverage,0.08325170424995362,51
+OH,18,Education & Community,0.06174100440489397,51
+OH,19,Criminal Justice,0.06985293850100917,51
+PA,1,Involuntary & Inpatient Treatment,0.0265275364211409,146
+PA,2,Drug Crime & Penalties,1.6266960821711914e-4,146
+PA,3,Maternal & Prenatal Health,0.001782315746099737,146
+PA,4,General Regulatory Procedures,0.019481721707837095,146
+PA,8,Healthcare Facilities & Licensing,1.626696082171508e-4,146
+PA,9,Advisory Bodies & Task Forces,0.11589954652135136,146
+PA,10,Workforce Licensing,0.011113333562564623,146
+PA,11,Policy Equity & Conditions,0.0016479955470086653,146
+PA,12,Budget & Fiscal Provisions,0.004835955731401961,146
+PA,13,Licensing & Privacy Records,0.004551382546982551,146
+PA,15,Corporate & Regulatory,0.0026835652648312986,146
+PA,16,Insurance & Medicaid Coverage,0.04448770726614251,146
+PA,18,Education & Community,0.05920680549986414,146
+PA,19,Criminal Justice,0.05277897457943065,146
+TX,1,Involuntary & Inpatient Treatment,0.03062540603166869,344
+TX,2,Drug Crime & Penalties,0.0011126027822450574,344
+TX,3,Maternal & Prenatal Health,0.0014065087650271721,344
+TX,4,General Regulatory Procedures,0.009800847242966038,344
+TX,8,Healthcare Facilities & Licensing,2.96769511119008e-4,344
+TX,9,Advisory Bodies & Task Forces,0.031133236650630013,344
+TX,10,Workforce Licensing,0.2528542026023317,344
+TX,11,Policy Equity & Conditions,0.0011396081685268902,344
+TX,12,Budget & Fiscal Provisions,0.0012105212462272192,344
+TX,13,Licensing & Privacy Records,0.004849529987500858,344
+TX,15,Corporate & Regulatory,0.009049061557306,344
+TX,16,Insurance & Medicaid Coverage,0.12052693350644096,344
+TX,18,Education & Community,0.3773631104596582,344
+TX,19,Criminal Justice,0.024148893598429665,344
+WA,1,Involuntary & Inpatient Treatment,0.33862597111758297,127
+WA,2,Drug Crime & Penalties,4.2605856344262984e-4,127
+WA,3,Maternal & Prenatal Health,0.007151209027552699,127
+WA,4,General Regulatory Procedures,0.02482560936628317,127
+WA,8,Healthcare Facilities & Licensing,1.0771966226347583e-4,127
+WA,9,Advisory Bodies & Task Forces,0.08923974394474359,127
+WA,10,Workforce Licensing,0.10231928877546277,127
+WA,11,Policy Equity & Conditions,0.008273901845889947,127
+WA,12,Budget & Fiscal Provisions,0.025474750466958115,127
+WA,13,Licensing & Privacy Records,0.026826820821028382,127
+WA,15,Corporate & Regulatory,0.04578755162616861,127
+WA,16,Insurance & Medicaid Coverage,0.059436079826069604,127
+WA,18,Education & Community,0.1905962035283379,127
+WA,19,Criminal Justice,0.029169697511200653,127
+WI,1,Involuntary & Inpatient Treatment,0.009644137148392512,105
+WI,2,Drug Crime & Penalties,0.038253513173101224,105
+WI,3,Maternal & Prenatal Health,0.0013097936097328012,105
+WI,4,General Regulatory Procedures,0.0027156277218960906,105
+WI,8,Healthcare Facilities & Licensing,1.6882652683154127e-4,105
+WI,9,Advisory Bodies & Task Forces,0.008680358482701217,105
+WI,10,Workforce Licensing,0.01925253593672738,105
+WI,11,Policy Equity & Conditions,1.688265268316158e-4,105
+WI,12,Budget & Fiscal Provisions,0.0010417256801759829,105
+WI,13,Licensing & Privacy Records,0.024270005432464634,105
+WI,15,Corporate & Regulatory,1.6882652683155469e-4,105
+WI,16,Insurance & Medicaid Coverage,0.026957899665469243,105
+WI,18,Education & Community,0.015537936496787058,105
+WI,19,Criminal Justice,0.014615914022500483,105

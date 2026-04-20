@@ -1,0 +1,31 @@
+state,mean_gamma,mean_score,domain,topic_label,domain_full,score_scaled
+CA,0.10527487511986665,0.4831932773109244,education_access,Education & Community,Education Access & Quality,0.062343083213455074
+FL,0.10968473096345785,0.4828767123287671,education_access,Education & Community,Education Access & Quality,0.06151701160071547
+GA,0.20640388136886476,0.4673913043478261,education_access,Education & Community,Education Access & Quality,0.02110806978543948
+IL,0.0720979511727812,0.5818181818181818,education_access,Education & Community,Education Access & Quality,0.3197033046991236
+NY,0.059473626896440986,0.46081208687440983,education_access,Education & Community,Education Access & Quality,0.003939699639781237
+OH,0.06174100440489397,0.7843137254901961,education_access,Education & Community,Education Access & Quality,0.8481124142405739
+PA,0.05920680549986414,0.5616438356164384,education_access,Education & Community,Education Access & Quality,0.26705864833418713
+TX,0.3773631104596582,0.45930232558139533,education_access,Education & Community,Education Access & Quality,0
+WA,0.1905962035283379,0.84251968503937,education_access,Education & Community,Education Access & Quality,1
+WI,0.015537936496787058,0.5238095238095238,education_access,Education & Community,Education Access & Quality,0.16833057437525256
+CA,0.009578703369434928,0.20168067226890757,discrimination_equity,Policy Equity & Conditions,"Discrimination, Equity & Rights",0.5019311630955273
+FL,0.014877271020195496,0.07876712328767123,discrimination_equity,Policy Equity & Conditions,"Discrimination, Equity & Rights",0.13839131285571596
+GA,0.011597963837391739,0.10869565217391304,discrimination_equity,Policy Equity & Conditions,"Discrimination, Equity & Rights",0.2269105444569706
+IL,0.031466958973289404,0.2545454545454545,discrimination_equity,Policy Equity & Conditions,"Discrimination, Equity & Rights",0.6582886614434917
+NY,0.006986900278526242,0.12275731822474033,discrimination_equity,Policy Equity & Conditions,"Discrimination, Equity & Rights",0.26850055640122233
+OH,0.058467208683025726,0.19607843137254902,discrimination_equity,Policy Equity & Conditions,"Discrimination, Equity & Rights",0.4853614860066293
+PA,0.0016479955470086653,0.1095890410958904,discrimination_equity,Policy Equity & Conditions,"Discrimination, Equity & Rights",0.22955290957939611
+TX,0.0011396081685268902,0.03197674418604651,discrimination_equity,Policy Equity & Conditions,"Discrimination, Equity & Rights",0
+WA,0.008273901845889947,0.3700787401574803,discrimination_equity,Policy Equity & Conditions,"Discrimination, Equity & Rights",1
+WI,1.688265268316158e-4,0.0761904761904762,discrimination_equity,Policy Equity & Conditions,"Discrimination, Equity & Rights",0.13077039630421258
+CA,0.02395176188693765,0.2605042016806723,neighborhood_environment,Criminal Justice,Neighborhood & Built Environment,0.11797927999722811
+FL,0.017020801583896225,0.3527397260273973,neighborhood_environment,Criminal Justice,Neighborhood & Built Environment,0.24880473388508834
+GA,0.12902781559673093,0.30434782608695654,neighborhood_environment,Criminal Justice,Neighborhood & Built Environment,0.1801664047917831
+IL,0.1439731962686048,0.3832167832167832,neighborhood_environment,Criminal Justice,Neighborhood & Built Environment,0.2920329246305477
+NY,0.03996120357332483,0.20113314447592068,neighborhood_environment,Criminal Justice,Neighborhood & Built Environment,0.033768282535819566
+OH,0.06985293850100917,0.8823529411764706,neighborhood_environment,Criminal Justice,Neighborhood & Built Environment,1
+PA,0.05277897457943065,0.19863013698630136,neighborhood_environment,Criminal Justice,Neighborhood & Built Environment,0.03021805508025474
+TX,0.024148893598429665,0.17732558139534885,neighborhood_environment,Criminal Justice,Neighborhood & Built Environment,0
+WA,0.029169697511200653,0.7480314960629921,neighborhood_environment,Criminal Justice,Neighborhood & Built Environment,0.8094805212166816
+WI,0.014615914022500483,0.29523809523809524,neighborhood_environment,Criminal Justice,Neighborhood & Built Environment,0.16724530219558112

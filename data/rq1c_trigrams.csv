@@ -1,0 +1,14 @@
+domain,ngram,count
+healthcare_access,behavioral health services,241
+healthcare_access,health care provider,189
+social_community,law enforcement agency,180
+social_community,community mental health,165
+social_community,law enforcement officer,142
+healthcare_access,emergency medical services,116
+healthcare_access,health care professional,116
+healthcare_access,health care coverage,34
+social_community,mental health court,27
+healthcare_access,health care delivery,25
+healthcare_access,designated crisis responder,20
+healthcare_access,health care access,17
+social_community,addiction services provider,14

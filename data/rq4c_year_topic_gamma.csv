@@ -1,0 +1,29 @@
+session_year,topic,topic_label,mean_gamma,n_bills
+2021,1,Involuntary & Inpatient Treatment,0.037370205313619835,1575
+2021,2,Drug Crime & Penalties,0.005172588211608908,1575
+2021,3,Maternal & Prenatal Health,0.011800888769839963,1575
+2021,4,General Regulatory Procedures,0.01861877632263355,1575
+2021,8,Healthcare Facilities & Licensing,0.004182462699988034,1575
+2021,9,Advisory Bodies & Task Forces,0.06434871653393558,1575
+2021,10,Workforce Licensing,0.0467285680259543,1575
+2021,11,Policy Equity & Conditions,0.013696482301626348,1575
+2021,12,Budget & Fiscal Provisions,0.02420622940854806,1575
+2021,13,Licensing & Privacy Records,0.013670497097458571,1575
+2021,15,Corporate & Regulatory,0.011008703302673131,1575
+2021,16,Insurance & Medicaid Coverage,0.05729046077472204,1575
+2021,18,Education & Community,0.10606798190483584,1575
+2021,19,Criminal Justice,0.05757583073654067,1575
+2023,1,Involuntary & Inpatient Treatment,0.03637461867229889,1594
+2023,2,Drug Crime & Penalties,0.00593405079123259,1594
+2023,3,Maternal & Prenatal Health,0.011309092300930483,1594
+2023,4,General Regulatory Procedures,0.01657511346248152,1594
+2023,8,Healthcare Facilities & Licensing,0.00396100742429138,1594
+2023,9,Advisory Bodies & Task Forces,0.06786958511162569,1594
+2023,10,Workforce Licensing,0.061002409297123666,1594
+2023,11,Policy Equity & Conditions,0.012986150044591293,1594
+2023,12,Budget & Fiscal Provisions,0.023409595976471288,1594
+2023,13,Licensing & Privacy Records,0.015349984492745253,1594
+2023,15,Corporate & Regulatory,0.006989040350816436,1594
+2023,16,Insurance & Medicaid Coverage,0.06564650482185092,1594
+2023,18,Education & Community,0.11981878876007551,1594
+2023,19,Criminal Justice,0.06394833189393549,1594

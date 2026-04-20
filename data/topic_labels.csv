@@ -1,0 +1,21 @@
+topic,topic_label,is_artifact
+1,Involuntary & Inpatient Treatment,FALSE
+2,Drug Crime & Penalties,FALSE
+3,Maternal & Prenatal Health,FALSE
+4,General Regulatory Procedures,FALSE
+5,procedural_artifact,TRUE
+6,procedural_artifact,TRUE
+7,procedural_artifact,TRUE
+8,Healthcare Facilities & Licensing,FALSE
+9,Advisory Bodies & Task Forces,FALSE
+10,Workforce Licensing,FALSE
+11,Policy Equity & Conditions,FALSE
+12,Budget & Fiscal Provisions,FALSE
+13,Licensing & Privacy Records,FALSE
+14,procedural_artifact,TRUE
+15,Corporate & Regulatory,FALSE
+16,Insurance & Medicaid Coverage,FALSE
+17,procedural_artifact,TRUE
+18,Education & Community,FALSE
+19,Criminal Justice,FALSE
+20,procedural_artifact,TRUE

@@ -1,0 +1,2123 @@
+---
+title: "Project Code Documentation: [Your Project Title]"
+author: "Your Name"
+date: today
+format:
+  pdf:
+    pdf-engine: lualatex
+    keep-tex: false
+    toc: true                    # Add table of contents
+    toc-depth: 2                 # Show sections and subsections
+    number-sections: true        # Number the sections
+    code-overflow: wrap          # Wraps long lines of code
+    cite-method: citeproc
+    natbib: false
+    biblatex: false
+    include-in-header:
+      text: |
+        \usepackage{xurl}
+        \PassOptionsToPackage{hyphens}{url}
+        \usepackage{fvextra}
+execute:
+  freeze: true                   # Set to false to re-run code each time
+  cache: false                   # Set to true if you have long-running code
+  echo: true                     # Show code in the output
+  warning: true                  # Shows warnings (helpful for debugging)
+  message: true                  # Shows messages
+  python:
+    executable: "C:/Users/jakef/anaconda3/envs/textmining/python.exe"  
+editor: source
+---
+
+# Introduction
+This document provides a fully reproducible, annotated record of the data 
+collection, preprocessing, and analysis pipeline for the study *Mapping 
+Legislative Attention to the Social Determinants of Mental Health: A 
+Text Analysis of State Bills, 2021–2024*. The pipeline is organized into 
+four major stages: (1) data collection from the LegiScan API and local JSON 
+session archives, (2) text preprocessing and corpus construction, (3) 
+term-frequency and n-gram analysis, and (4) SDOH dictionary scoring. Each 
+code chunk is preceded by a plain-language explanation of what it does and 
+why, and followed by an interpretation of its output. The analysis is 
+implemented in Python and R, managed through a shared Conda environment 
+loaded via the `reticulate` package.
+
+## Environment Setup
+
+This project uses both R and Python within a single Quarto document. The 
+`reticulate` package acts as the bridge between the two languages, allowing 
+Python code chunks to share data objects and the same interpreter session 
+as the R environment. Without this step, Python chunks would either fail 
+to execute or default to a system Python installation that lacks the 
+required libraries (e.g., `pandas`, `BeautifulSoup`, `pdfminer`).
+
+The `use_condaenv()` call explicitly binds the session to the `textmining` 
+Conda environment, which contains all project dependencies. Setting 
+`required = TRUE` ensures that if this environment cannot be found, the 
+document will throw an error rather than silently falling back to a 
+different Python installation — an important safeguard for reproducibility.
+
+```{r}
+#| label: load-python-environment
+
+library(reticulate)
+use_condaenv("textmining", required = TRUE)
+```
+
+If this chunk runs without error, the correct Conda environment has been 
+activated. To confirm the Python version and key package availability, 
+running `py_config()` after this chunk is a useful manual check during 
+development. In the rendered output, no printed output is expected from 
+this chunk; a clean, silent execution confirms successful environment 
+loading. If a "conda environment not found" error appears, verify that the 
+`textmining` environment exists by running `conda env list` in your 
+terminal and that the `executable` path in the YAML header points to the 
+correct Python binary.
+
+
+
+## Data Collection
+
+### Step 1: Extract Bill Metadata from Local JSON Archives
+
+I downloaded historical session archives for all ten states from session years 2021-2024.
+I found such data from legiscan.com/datasets. For each session, I downloaded the files 
+in API JSON format to `raw_zips/`. I then unzipped these files into a local directory (`unzipped_json/`).
+These LegiScan bulk session archives, organized into subdirectories by state and session,
+contain one JSON file per legislative bill record. Each JSON file follows a consistent 
+schema in which the top-level `bill` object holds both bill-level fields 
+(e.g., state, bill number, title, description) and a nested `texts` array listing 
+every available text version of that bill (e.g., Introduced, Engrossed, 
+Enrolled, Amended), although the bill text itself is not included in the archive and must be retrieved separately via the API getBillText endpoint using the `doc_id` field in each text entry. 
+Therefore, my workflow is to first extract the relevant metadata from the local JSON files, then
+filter to mental-health-relevant bills based on title and description keywords, and finally retrieve the full text for those bills via the API.
+
+This chunk does three things. First, it scans the 
+`unzipped_json/` directory and identifies only those JSON files located 
+inside any subdirectory named `bill/`, which is where LegiScan archive 
+bill records are stored (as opposed to people or vote records). 
+Second, for each bill JSON, it selects the **Introduced** text version — 
+the version of the bill as first filed — because using the introduced text 
+ensures that all bills are compared at the same stage of the legislative 
+process, before any amendments alter the original language. This is to ensure 
+consistency across all bills. If no Introduced version is explicitly labeled, 
+the script falls back to the first available text entry (`texts[0]`) rather than 
+discarding the bill, though all of the final mental health bills selected later (in Step 2)
+were explicitly labeled as Introduced versions. Third, it extracts key metadata 
+fields — including `bill_id`, `state`, `bill_number`, `title`, `description`,
+`status_date`, `doc_id`, and `mime` type — and writes them to a flat CSV file (`metadata.csv`) 
+that will serve as the master bill registry for all downstream steps. The 
+`description` and `status_date` fields were added to this chunk later specifically to support 
+keyword filtering (Step 2) and session year coding (Data Preparation). The purpose of these 
+metadata fields will become apparent as the pipeline progresses.
+
+
+
+```{python}
+#| label: extract-doc-ids
+
+import json
+import csv
+from pathlib import Path
+
+bill_root = Path("unzipped_json/")
+out_csv = Path("metadata.csv")
+
+# find all JSON files under bill_root, then keep only those whose parent folder is named "bill"
+all_json = list(bill_root.rglob("*.json"))
+bill_json_files = [f for f in all_json if f.parent.name == "bill"]
+print(f"Found {len(bill_json_files)} bill JSON files")
+
+# prepare container for extracted rows
+rows = []   # list of dicts, one per bill with a selected text version
+
+def clean_date(d):
+    """Return None if date is missing/placeholder, otherwise return as-is."""
+    if not d or d == "0000-00-00":
+        return None
+    return d
+
+# iterate over each bill JSON file
+for json_file in bill_json_files:
+    try:
+        # read file text (explicit UTF-8) and parse JSON to Python dict
+        data = json.loads(json_file.read_text(encoding="utf-8"))
+        bill = data.get("bill", {})           # top-level "bill" object (if missing, use empty dict)
+        session = bill.get("session", {})
+        texts = bill.get("texts", [])         # list of text-version entries (Introduced, Engrossed, etc.)
+        sponsors = bill.get("sponsors", [])
+
+        # select the "Introduced" text version if present, otherwise skip the bill
+        introduced = None
+        for t in texts:
+            if str(t.get("type", "")).lower() == "introduced":    # case-insensitive match on type field
+                introduced = t
+                break
+        if not introduced:
+            continue   # skip to next bill entirely
+
+        # if a text entry was found, collect required metadata into rows list
+        if introduced:
+            # --- Primary sponsor (first in list) ---
+            primary_sponsor = sponsors[0] if sponsors else {}
+
+            # --- Chamber: map body code to readable label ---
+            body_code = bill.get("body", "")
+            chamber_map = {"A": "House", "H": "House", "S": "Senate", "J": "Joint", "": "Unknown"}
+            chamber = chamber_map.get(body_code, body_code)
+
+            rows.append({
+                "json_file": str(json_file),
+                "bill_id": bill.get("bill_id"),
+                "state": bill.get("state"),
+                "bill_number": bill.get("bill_number"),
+                "bill_type": bill.get("bill_type"),       # "B"=bill, "R"=resolution, etc.
+
+                # --- Session (directly from session object) ---
+                "session_id": bill.get("session_id"),
+                "session_year": session.get("year_start"),   # e.g., 2021
+                "session_title": session.get("session_title"),# e.g., "2021-2022 Regular Session"
+                "special_session": session.get("special", 0),   # 1 if special session
+
+                # --- Chamber (directly from body field) ---
+                "body_code": body_code,                   # raw: "A", "S", etc.
+                "chamber": chamber,                     # mapped: "House", "Senate"
+
+                # --- Bill metadata ---
+                "title": bill.get("title"),
+                "description": bill.get("description"),  
+                "status_date": clean_date(bill.get("status_date")),  
+
+                # --- Introduced text version ---
+                "doc_id": introduced.get("doc_id"),
+                "date_introduced": clean_date(introduced.get("date")),  # actual intro date, not status_date
+                "text_type": introduced.get("type"),
+                "mime": introduced.get("mime"),
+                "source_url": introduced.get("url"),
+                "state_link": introduced.get("state_link"),
+
+                # --- Primary sponsor (useful for RQ2) ---
+                "sponsor_name":    primary_sponsor.get("name"),
+                "sponsor_party":   primary_sponsor.get("party"),# "D", "R", "I", etc.
+                "sponsor_role":    primary_sponsor.get("role"), # "Rep", "Sen"
+            })
+    except Exception as e:
+        print(f"Skipping {json_file}: {e}")
+
+print(f"Rows collected: {len(rows)}")
+
+# if any rows were collected, write them to CSV using the first row's keys as the header order
+if rows:
+    with out_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"Wrote {len(rows)} rows to {out_csv}")
+```
+
+**Output interpretation.** The first printed line — `Found 153200 bill JSON 
+files` — confirms how many bill-level JSON files were detected in the 
+archive. This number reflects all bills across all ten states and all 
+sessions in the downloaded archives, regardless of bill type or date, and 
+should be considerably larger than the final analysis corpus. The second 
+line — `Rows collected: 150603` — reports how many bills had at least one introduced version of the bill, 
+establishing the full pre-filter candidate pool described in the Data 
+Collection section of the paper. The final line confirms the path and row 
+count of the saved `metadata.csv` file. All 150603 rows were written to metadata.csv. 
+
+
+### Step 2: Filter the Full Candidate Pool to Mental Health Bills
+
+The 150,603-record metadata table compiled in Step 1 contains every 
+introduced bill across all ten states and sessions — the vast majority of 
+which have no substantive connection to mental health. This chunk narrows 
+that pool to a mental-health-relevant corpus by applying a keyword filter 
+to each bill's `title` and `description` fields. I was originally going
+to use the `title` field alone, but during pilot inspection I found that for 
+some states, like Illinois, bills contained highly relevant information in the `description` 
+field that was not always present in the title. 
+
+**Why keyword filtering on titles and descriptions, rather than full text?**
+At this stage, full bill text has not yet been retrieved (that happens in 
+Steps 3–5). Titles and descriptions are short, structured metadata fields 
+that reliably capture a bill's primary subject matter. Filtering on these 
+fields is therefore an efficient and defensible first-pass strategy for 
+identifying mental-health-relevant legislation. This approach does carry 
+two known limitations, which are acknowledged in the paper: it may exclude 
+bills that address mental health indirectly without using the target 
+vocabulary in their title or description (false negatives), and it may 
+retain a small number of bills whose titles contain a keyword incidentally 
+rather than substantively (false positives).
+
+Furthermore, my API quota is limited to 30,000 queries per month, and retrieving the full text for all 150,603 bills would exceed that limit by a wide margin. Besides, using keyword filtering on the full text would make it much more likely to identify bills that do not have as its focus mental health but just mention it in passing. By filtering on the title and description, I can focus on bills that are more likely to be substantively about mental health, which is the main interest of the study.
+
+**Why these specific keywords?** The keyword list was constructed to capture 
+the core clinical, diagnostic, and policy vocabulary used in state 
+mental health legislation, organized around several conceptual clusters: 
+general mental health and behavioral health terminology (`"mental health"`, 
+`"behavioral health"`), diagnostic categories (`"schizophrenia"`, 
+`"bipolar"`, `"psychosis"`, `"eating disorder"`, `"anxiety disorder"`, 
+`"depression"`), crisis and commitment language (`"crisis intervention"`, 
+`"civil commitment"`, `"involuntary commitment"`), trauma-informed and 
+co-occurring disorder frameworks (`"post-traumatic"`, `"trauma-informed"`, 
+`"co-occurring disorder"`), and specific service or court types 
+(`"mental health court"`, `"peer support specialist"`, `"inpatient 
+psychiatric"`). Partial stems such as `"psychiatric"` and `"psycholog"` 
+are included to catch compound forms (`"psychiatric disorder"`, 
+`"psychologist"`, `"psychological"`). I developed this list based on the sources 
+I identified in the literature review. I chose them because their use in the
+title or description of a bill seem likely to signal that the bill is focused 
+on mental health. The keyword `"opioid"` was 
+deliberately excluded because pilot inspection revealed it disproportionately 
+returned pharmacy regulation and overdose-response bills with no broader 
+mental health focus, introducing substantial noise. The `case=False` 
+argument ensures the filter is case-insensitive, and `na=False` safely 
+handles any bills with missing title or description fields by treating 
+them as non-matches rather than raising an error. Matching on `title OR 
+description` (rather than `AND`) maximizes recall, accepting the risk of 
+some false positives in exchange for minimizing the number of genuinely 
+relevant bills missed.
+
+```{python}
+#| label: filter-to-mental-health-bills
+
+import pandas as pd
+
+df = pd.read_csv("metadata.csv")
+print(f"Total bills: {len(df)}")
+
+keywords = [
+    "mental health", "mental illness", "mental disorder",
+    "behavioral health", "psychiatric", "psychiatric disorder",
+    "psycholog", "psychosis", "psychotic", "schizophrenia", "bipolar",
+    "suicide", "suicidal", "crisis intervention",
+    "civil commitment", "involuntary commitment",
+    "post-traumatic", "trauma-informed",
+    "substance use", "substance abuse", "substance use disorder",
+    "co-occurring disorder", "addiction",
+    "community mental health", "inpatient psychiatric",
+    "outpatient psychiatric", "inpatient mental health",
+    "mental health court", "peer support specialist",
+    "serious emotional disturbance", "eating disorder",
+    "depression", "anxiety disorder",
+]
+
+# Deliberately excluded: "opioid" — too many non-MH pharmacy/overdose bills
+
+pattern = "|".join(keywords)
+
+# Match on title OR description
+filtered = df[
+    df["title"].str.contains(pattern, case=False, na=False) |
+    df["description"].str.contains(pattern, case=False, na=False)    # This line returns True for any row where either title or description contains at least one keyword, and False otherwise. The resulting boolean Series is used to filter the DataFrame, keeping only rows where the condition is True.
+]
+
+print(f"Mental health bills (title or description): {len(filtered)}")
+print("\nBy state:")
+print(filtered["state"].value_counts())
+
+filtered.to_csv("metadata_mental_health.csv", index=False)
+print("Saved to metadata_mental_health.csv")
+```
+
+**Output interpretation.** The first line confirms the total number of 
+bills loaded from `metadata.csv` — this should (and does) match the 150,603-row 
+figure produced in Step 1. The second line reports the number of bills 
+that matched at least one keyword in their title or description; in this 
+project, that figure is **3,395**, representing approximately 2.3% of the 
+full candidate pool. This relatively low hit rate is expected: most bills 
+introduced in state legislatures address topics unrelated to mental health 
+(e.g., transportation, taxation, property law). The state-level breakdown 
+that follows appears in Table 1 in the paper. The final line 
+confirms that the filtered metadata has been saved to 
+`metadata_mental_health.csv`, which becomes the master input file for 
+all subsequent text retrieval and analysis steps.
+
+### Step 3: Validate the LegiScan `getBillText` API on a Single Bill
+
+Before running the full text retrieval loop across all 3,395 bills — a 
+process that takes approximately 30–35 minutes and consumes a substantial 
+portion of the monthly API quota — it is essential to verify that the 
+`getBillText` endpoint is accessible, that the response structure matches 
+expectations, and that the Base64-encoded `doc` field can be successfully 
+decoded. Testing on a single bill first is a standard defensive programming 
+practice: it isolates connection problems, authentication failures, and 
+schema surprises at minimal cost before they propagate across thousands of 
+API calls.
+
+The `getBillText` endpoint accepts a `doc_id` — the document-level 
+identifier stored in the `texts` array of each bill JSON — and returns a 
+JSON response containing a nested `text` object. The most important fields 
+within that object are `doc` (the full bill text, Base64-encoded), `mime` 
+(the MIME type of the original source file, e.g., `text/html` or 
+`application/pdf`), and `status` (an `"OK"` or error string at the 
+top level). The MIME type is retrieved here alongside the raw `doc` field 
+because it determines which extraction pathway the full retrieval script 
+will use: HTML files are parsed with BeautifulSoup, PDF files are saved 
+as raw bytes for a separate extraction step, and all other files are 
+decoded directly to plain text. Inspecting the first 200 characters of the 
+`doc` field gives an immediate visual check — Base64-encoded content will 
+appear as a long string of alphanumeric characters, confirming the field 
+is populated and the encoding is intact before attempting a full decode.
+
+> **Note on the API key:** The `API_KEY` value is hardcoded directly in 
+> this script for development convenience. In any version of this file 
+> shared publicly or submitted as a reproducibility supplement, the key 
+> should be replaced with a placeholder string (e.g., `"YOUR_API_KEY_HERE"`) 
+> or loaded from an environment variable using `os.environ.get("LEGISCAN_KEY")`.
+
+```{python}
+#| label: api-single-bill-test
+
+import requests
+import base64
+import json
+import pandas as pd
+
+API_KEY = "648a8a5812e320d9a42fd793f82637ff"
+
+df = pd.read_csv("metadata_mental_health.csv")
+test_row = df.iloc[0]
+
+print(f"Testing: {test_row['state']} {test_row['bill_number']} | doc_id: {test_row['doc_id']} | mime: {test_row['mime']}")
+
+url = f"https://api.legiscan.com/?key={API_KEY}&op=getBillText&id={int(test_row['doc_id'])}"
+r = requests.get(url, timeout=30)
+data = r.json()
+
+print("Status:", data.get("status"))
+print("Top-level keys:", list(data.keys()))
+
+if data.get("status") == "OK":
+    text_obj = data.get("text", {})
+    print("Text object keys:", list(text_obj.keys()))
+    doc = text_obj.get("doc", "")
+    print(f"doc field length: {len(doc)} chars")
+    print("First 200 chars of doc:", doc[:200])
+```
+
+**Output interpretation.** The first printed line identifies which bill is 
+being tested — confirming the correct row was pulled from 
+`metadata_mental_health.csv` and displaying its MIME type, which determines 
+what to expect from the `doc` field. A `Status: OK` response on the second 
+line confirms the API key is valid and the endpoint is reachable. The 
+`Top-level keys` line should show `["status", "text"]` — the standard 
+structure for a successful `getBillText` response. Within the `text` object, 
+the `Text object keys` line should include at minimum `doc`, `mime`, 
+`bill_id`, `doc_id`, and `date`. A non-empty `doc field length` — typically 
+tens of thousands of characters for a full bill — confirms the document 
+payload was returned. The final preview of the first 200 characters will 
+appear as a dense string of letters and numbers (Base64 encoding), which 
+is the expected appearance before decoding; it should **not** look like 
+readable English at this stage. If `Status` is anything other than `OK` 
+(e.g., `"ERROR"` with a message like `"Invalid API Key"` or `"Daily limit 
+exceeded"`), stop here and resolve the issue before proceeding to the 
+full retrieval script in the next step.
+
+### Step 4: Retrieve and Decode Full Bill Text for All 3,395 Bills
+
+With the single-bill test confirming that the API is accessible and the 
+response structure is as expected, this script scales that same logic 
+across all 3,395 bills in `metadata_mental_health.csv`. For each bill, it 
+calls the `getBillText` endpoint using the bill's `doc_id`, decodes the 
+Base64-encoded `doc` field, converts the content to a UTF-8 plain-text 
+file, and saves it to the `bill_txt/` directory under a standardized 
+filename: `{state}_{bill_number}_{doc_id}.txt`. The `doc_id` is included 
+in the filename specifically to serve as a unique join key when linking 
+text files back to metadata in the preprocessing stage.
+
+**Why separate `raw_billtext/` and `bill_txt/` directories?** The 
+`raw_billtext/` directory stores the original raw API JSON responses and 
+any PDF binary files, preserving the unmodified source data for 
+reproducibility and audit purposes. The `bill_txt/` directory stores only 
+the final, human-readable plain-text versions ready for analysis. Keeping 
+these separate maintains a clean distinction between the raw archive and 
+the processed corpus, consistent with the ETL (Extract, Transform, Load) 
+workflow described in the paper.
+
+**How MIME type drives the extraction pathway.** Because LegiScan returns 
+bill texts in multiple formats — most commonly HTML and PDF, with some 
+plain text — a single decoding strategy cannot handle all cases. The 
+script branches on the `mime` field returned in each bill's metadata row: 
+HTML files (`text/html`) are decoded to a UTF-8 string and then parsed 
+with BeautifulSoup to strip all HTML tags, extracting only the visible 
+text content. PDF files (`application/pdf`) cannot be meaningfully decoded 
+to text with this script alone — they are saved as raw binary `.pdf` files 
+in `raw_billtext/` and flagged in the issues log with the reason 
+`"pdf_needs_extraction"` for processing in the dedicated PDF extraction 
+step that follows. All other MIME types are treated as plain text and 
+decoded directly. This MIME-aware branching ensures that downstream text 
+files are clean UTF-8 plain text regardless of their original format.
+
+**Resume capability and rate limiting.** The script checks whether a 
+`.txt` output file already exists for each bill before making an API call, 
+and skips it if so (`skipped` counter). This means the script can be 
+safely interrupted and restarted without duplicating API calls or 
+overwriting already-retrieved files — an important safeguard given the 
+30–35 minute runtime and the LegiScan free-tier limit of 30,000 queries 
+per month. A 0.5-second pause between successful calls (`time.sleep(0.5)`) 
+and a longer 2-second pause after errors (`time.sleep(2)`) respect the 
+API's rate limits and reduce the risk of temporary bans.
+
+```{python}
+#| label: full-text-retrieval
+
+import requests
+import base64
+import json
+import time
+import pandas as pd
+from pathlib import Path
+from bs4 import BeautifulSoup
+import re
+
+API_KEY = "648a8a5812e320d9a42fd793f82637ff"
+
+df = pd.read_csv("metadata_mental_health.csv")
+
+raw_dir = Path("raw_billtext")
+txt_dir = Path("bill_txt")
+raw_dir.mkdir(exist_ok=True)
+txt_dir.mkdir(exist_ok=True)
+
+failed = []
+skipped = 0
+retrieved = 0
+
+for i, row in df.iterrows():
+    doc_id = int(row["doc_id"])
+    state = row["state"]
+    bill_number = str(row["bill_number"]).replace("/", "-")
+    mime = str(row.get("mime", ""))
+
+    txt_file = txt_dir / f"{state}_{bill_number}_{doc_id}.txt"
+    raw_file = raw_dir / f"{state}_{bill_number}_{doc_id}.json"
+
+    # Skip if already retrieved
+    if txt_file.exists():
+        skipped += 1
+        continue
+
+    try:
+        url = f"https://api.legiscan.com/?key={API_KEY}&op=getBillText&id={doc_id}"
+        r = requests.get(url, timeout=30)
+        data = r.json()
+
+        if data.get("status") != "OK":
+            print(f"[{i}] FAILED {state} {bill_number}: status={data.get('status')}")
+            failed.append({"bill_id": row["bill_id"], "doc_id": doc_id,
+                           "state": state, "bill_number": bill_number,
+                           "reason": data.get("status")})
+            time.sleep(1)
+            continue
+
+        # Save raw JSON response for reproducibility
+        raw_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+        # Decode Base64 doc field
+        doc_b64 = data["text"].get("doc", "")
+        if not doc_b64:
+            failed.append({"bill_id": row["bill_id"], "doc_id": doc_id,
+                           "state": state, "bill_number": bill_number,
+                           "reason": "empty doc"})
+            continue
+
+        doc_bytes = base64.b64decode(doc_b64)  # decodes Base64-encoded string (doc_b64) into its original raw bytes (binary data) and assigns that bytes object to doc_bytes. 
+                                              # This reverses the Base64 encoding but does not interpret those bytes as text.
+                                              # The resulting doc_bytes is a bytes object and may represent different kinds of files (HTML text, plain-text UTF-8, or a PDF binary).
+                                              # Subsequent code should either write those bytes directly to disk (for PDFs) or decode them to a string (e.g., doc_bytes.decode("utf-8", errors="replace")) before parsing if the MIME indicates text/HTML.
+                                              
+
+        # Branch by MIME type
+        if "html" in mime.lower():
+            html = doc_bytes.decode("utf-8", errors="replace") # decoding bytes to a string interprets the raw bytes with a character encoding (e.g., UTF-8) and returns a Python str. You have to decode Base64 into bytes, then decode bytes into a text string. We are doing the latter on this line. We already know the correct text encoding is UTF-8.
+            soup = BeautifulSoup(html, "html.parser")
+            text = soup.get_text(separator=" ", strip=True)
+            text = re.sub(r"\s+", " ", text).strip()
+            txt_file.write_text(text, encoding="utf-8")
+
+        elif "pdf" in mime.lower():
+            # Save raw PDF bytes — needs separate extraction step
+            # Note that we cannot decode PDF bytes to a string here like with html files because these bytes are not encoded as plain-text UTF-8.
+            pdf_file = raw_dir / f"{state}_{bill_number}_{doc_id}.pdf"
+            pdf_file.write_bytes(doc_bytes)
+            failed.append({"bill_id": row["bill_id"], "doc_id": doc_id,
+                           "state": state, "bill_number": bill_number,
+                           "reason": "pdf_needs_extraction"})
+
+        else:
+            # Treat as plain text
+            text = doc_bytes.decode("utf-8", errors="replace")
+            text = re.sub(r"\s+", " ", text).strip()
+            txt_file.write_text(text, encoding="utf-8")
+
+        retrieved += 1
+        if retrieved % 50 == 0:
+            print(f"Progress: {retrieved} retrieved, {skipped} skipped, {len(failed)} issues")
+
+        time.sleep(0.5)
+
+    except Exception as e:
+        print(f"[{i}] ERROR {state} {bill_number}: {e}")
+        failed.append({"bill_id": row["bill_id"], "doc_id": doc_id,
+                       "state": state, "bill_number": bill_number,
+                       "reason": str(e)})
+        time.sleep(2)
+
+print(f"\nDone. Retrieved: {retrieved} | Skipped: {skipped} | Issues: {len(failed)}")
+
+if failed:
+    pd.DataFrame(failed).to_csv("retrieval_issues.csv", index=False)
+    print("Issues saved to retrieval_issues.csv")
+```
+
+**Output interpretation.** During the run, progress lines print every 50 
+successful retrievals, giving a live sense of rate and time remaining. 
+At the end, the summary line reports three counts that together should 
+account for all 3,401 bills: `Retrieved` (newly saved `.txt` files in 
+this run), `Skipped` (files that already existed from a prior run), and 
+`Issues` (bills that could not be saved as plain text in this step). On 
+a fresh run, `Skipped` should be 0. The `Issues` count is expected to be 
+non-zero because it includes all PDF bills flagged for separate extraction 
+(`"pdf_needs_extraction"`), which in this corpus total 789 bills — these 
+are not failures, just deferred. True failures (API errors, empty `doc` 
+fields, or network exceptions) will appear with different reason strings 
+and should be a small minority. The final line confirms that all issue 
+records have been saved to `retrieval_issues.csv`, which serves as both 
+a processing audit trail and the input list for the PDF extraction and 
+retrieval_issues inspection steps that follow. After this chunk completes, 
+the `bill_txt/` directory should contain approximately 2,612 `.txt` files 
+(3,401 minus the ~789 PDF bills), and the `raw_billtext/` directory should 
+contain both the raw JSON responses and the saved PDF binaries.
+
+### Step 5: Audit the Retrieval Issues Log
+
+The full retrieval script in Step 4 logged every bill it could not 
+immediately save as a plain-text file into `retrieval_issues.csv`. This 
+chunk loads and inspects that log to distinguish between the two 
+fundamentally different types of entries it contains: **deferred cases** 
+that are expected and will be resolved in the next step, and **true 
+failures** that represent genuine data loss requiring attention.
+
+The `reason` field is the key diagnostic column. The most common value 
+should be `"pdf_needs_extraction"` — these are the 789 bills whose source 
+files are PDFs, which were intentionally saved as raw binary files in 
+`raw_billtext/` rather than decoded inline, because PDF-to-text conversion 
+requires a dedicated library (`pdfminer`) handled separately. Their 
+presence in the issues log is expected and does not indicate a problem. 
+All other reason values represent true retrieval failures: `"ERROR"` or 
+API status strings (e.g., `"ERR:002"`) indicate network or authentication 
+problems, `"empty doc"` indicates that the API returned a response with 
+no document payload, and exception message strings (e.g., `"timeout"`, 
+`"JSONDecodeError"`) indicate runtime errors. Any true failures should be 
+cross-referenced against the metadata to understand whether they cluster 
+by state, session year, or MIME type, as a systematic pattern may indicate 
+a retrievable problem rather than random noise.
+
+Inspecting the by-state breakdown alongside the reason breakdown serves 
+a second purpose: it allows you to check whether the issues are evenly 
+distributed across the corpus or concentrated in particular states. A 
+disproportionate number of issues from a single state may reflect a 
+state-specific MIME type pattern (e.g., all Georgia bills being PDFs) 
+rather than a retrieval error, which is useful to know before moving to 
+the PDF extraction step.
+
+```{python}
+#| label: inspect-retrieval-issues
+
+import pandas as pd
+
+issues = pd.read_csv("retrieval_issues.csv")
+print(f"Total issues logged: {len(issues)}")
+
+print("\nIssue types (reason field):")
+print(issues["reason"].value_counts())
+
+print("\nIssues by state:")
+print(issues["state"].value_counts())
+```
+
+**Output interpretation.** The `Total issues logged` count is 
+789 on a full fresh run — one entry per PDF bill deferred 
+for separate extraction. 
+In the `Issues by state` table, a state appearing with a count close to 
+its total bill count (e.g., Georgia showing 112 entries out of 112 bills) 
+is a signal that nearly all of that state's bills are PDFs — useful 
+context for interpreting the PDF extraction results in the next step, 
+and a reminder to note in the paper that PDF-sourced bills carry a 
+formatting limitation regarding struck-through repeal language.
+Only the following states had any PDF bills in this corpus: Florida, Pennsylvania, Washington, Georgia, Wisconsin, Ohio, and Illinois. Pennsylvania, Washington, Georgia, Wisconsin, and Ohio had exclusively PDF bills. 
+
+
+### Step 6: Verify Plain-Text File Counts Before PDF Extraction
+
+Before proceeding to the PDF extraction step, this chunk performs a 
+simple but important checkpoint: it counts the number of `.txt` files 
+currently in `bill_txt/` and the number of `.pdf` files saved in 
+`raw_billtext/`, and compares those figures against the expected totals 
+derived from the retrieval issues audit in Step 5.
+
+This verification matters for two reasons. First, it confirms that the 
+full retrieval loop completed without silent failures — a bill that 
+encountered an unlogged exception, for example, would show up as missing 
+here even if it did not appear in the issues log. Second, it establishes 
+a concrete baseline count of how many bills are already analysis-ready as 
+plain text versus how many still require PDF extraction, giving a clear 
+picture of what the next step needs to accomplish. Together, the `.txt` 
+count and the `.pdf` count should sum to approximately 3,401 minus any 
+true retrieval failures identified in Step 5.
+
+```{python}
+#| label: verify-file-counts
+
+from pathlib import Path
+
+txt_files = list(Path("bill_txt").glob("*.txt"))
+pdf_files = list(Path("raw_billtext").glob("*.pdf"))
+
+print(f"Plain-text .txt files ready for analysis: {len(txt_files)}")
+print(f"Raw .pdf files pending extraction:        {len(pdf_files)}")
+print(f"Combined total:                           {len(txt_files) + len(pdf_files)}")
+```
+
+**Output interpretation.** The `.txt` count should be  
+2,612 — the 3,401 mental health bills minus the 789 PDF bills deferred 
+in Step 4 — assuming no true retrieval failures. The `.pdf` count should 
+be  789, matching the `"pdf_needs_extraction"` count from 
+the issues log in Step 5. The combined total should equal or closely 
+approach 3,401; any meaningful shortfall indicates bills that were neither 
+successfully retrieved as text nor saved as PDFs, and those `doc_id` 
+values should be traced back through the issues log to determine whether 
+they are recoverable. If both counts look correct, proceed directly to 
+the PDF extraction step. If the `.txt` count is unexpectedly low, check 
+whether the `bill_txt/` folder path is correct and whether the retrieval 
+script wrote files to a different working directory than expected.
+
+
+### Step 7: Extract Plain Text from PDF Bill Files
+
+Of the 3,401 mental health bills in the corpus, 789 were 
+returned by the LegiScan API as PDF files rather than HTML. These bills — 
+concentrated primarily in states like Georgia that distribute 
+official bill text in PDF format — were saved as raw binary files in 
+`raw_billtext/` during Step 4. This chunk processes that PDF backlog using 
+`pdfminer.six`, a pure-Python PDF parsing library that extracts embedded 
+text content from PDF files without requiring any external tools or system 
+dependencies.
+
+**Why `pdfminer` rather than other PDF tools?** `pdfminer.six` was chosen 
+because it is well-suited to the specific characteristics of state 
+legislative PDFs: these are almost universally born-digital documents 
+(generated directly from word processors or legislative drafting software) 
+rather than scanned images, meaning their text content is embedded as 
+actual Unicode characters rather than as pixels requiring optical character 
+recognition (OCR). `pdfminer` reliably extracts that embedded text with 
+minimal configuration. An OCR-based approach such as `pytesseract` would 
+be slower, more error-prone, and unnecessary for this corpus.
+
+**The 50-character minimum threshold.** The script skips any extracted 
+text shorter than 50 characters, flagging it as `"empty or too short"`. 
+This threshold catches two failure modes: PDFs that extracted to a 
+completely empty string (which can happen when a PDF's text layer is 
+corrupt or absent), and PDFs that extracted to only a handful of 
+characters such as a page header or footer with no substantive content. 
+Both cases represent bills whose text is not usable for analysis and 
+should be documented as failures rather than silently passed downstream 
+as near-empty documents that would distort frequency counts.
+
+**Known limitation: loss of visual markup.** As noted in the paper's Data 
+Collection section, PDF-to-text conversion with `pdfminer` preserves 
+lexical content but discards all visual formatting. In particular, some 
+state legislative PDFs use strikethrough text to indicate language being 
+repealed by the introduced bill and underlined or highlighted text to 
+indicate new insertions. These markup conventions are invisible in plain 
+text extraction, meaning that repealed language and new language are 
+treated identically by all downstream text analyses. This limitation is 
+acknowledged but not corrected, as addressing it would require either 
+custom PDF rendering logic or manual review, both of which are outside 
+the scope of this project.
+
+
+```{python}
+#| label: pdf-text-extraction
+
+from pdfminer.high_level import extract_text
+from pathlib import Path
+import re
+import pandas as pd
+
+raw_dir = Path("raw_billtext")
+txt_dir = Path("bill_txt")
+txt_dir.mkdir(exist_ok=True)
+
+pdf_files = list(raw_dir.glob("*.pdf"))
+print(f"PDFs to process: {len(pdf_files)}")
+
+failed_pdfs = []
+extracted = 0
+
+for pdf_file in pdf_files:
+    txt_file = txt_dir / (pdf_file.stem + ".txt")
+
+    # Skip if already extracted
+    if txt_file.exists():
+        continue
+
+    try:
+        text = extract_text(str(pdf_file))
+
+        # Discard near-empty extractions
+        if not text or len(text.strip()) < 50:
+            failed_pdfs.append({"file": pdf_file.name, "reason": "empty or too short"})
+            continue
+
+        text = re.sub(r"\s+", " ", text).strip()
+        txt_file.write_text(text, encoding="utf-8")
+        extracted += 1
+
+        if extracted % 50 == 0:
+            print(f"Extracted: {extracted}")
+
+    except Exception as e:
+        print(f"Failed: {pdf_file.name} — {e}")
+        failed_pdfs.append({"file": pdf_file.name, "reason": str(e)})
+
+print(f"\nDone. Extracted: {extracted} | Failed: {len(failed_pdfs)}")
+
+if failed_pdfs:
+    pd.DataFrame(failed_pdfs).to_csv("pdf_extraction_failures.csv", index=False)
+    print("Failures saved to pdf_extraction_failures.csv")
+```
+
+**Output interpretation.** The opening line confirms how many PDF files 
+are queued for extraction — this should match the `.pdf` count from Step 
+6 and the `"pdf_needs_extraction"` count from Step 5. Progress lines print 
+every 50 successful extractions, giving a sense of pace; PDF extraction 
+with `pdfminer` is slower than HTML parsing, so this step may take several 
+minutes depending on average file size. The final summary line reports 
+two counts: `Extracted` (PDFs successfully converted to `.txt` files) and 
+`Failed` (PDFs that raised an exception or fell below the 50-character 
+threshold). There are 0 failures.
+
+
+### Step 8: Confirm Final Corpus Size After PDF Extraction
+
+With both the HTML retrieval (Step 4) and PDF extraction (Step 7) 
+complete, this final checkpoint verifies the total number of plain-text 
+files now present in `bill_txt/` — the fully assembled, analysis-ready 
+corpus. This is the definitive count of documents available for all 
+downstream preprocessing and analysis steps, and it is the figure that 
+should be reported in the paper when describing the final corpus size.
+
+Running this check after PDF extraction — rather than relying on the 
+intermediate count from Step 6 — is important because the PDF extraction 
+step adds new `.txt` files to `bill_txt/` that were not present at the 
+Step 6 checkpoint. The count here reflects the true total after both 
+retrieval pathways have been completed. Any gap between this number and 
+3,401 represents bills permanently excluded from the text analysis corpus, 
+the composition of which should be inspected via the two failure logs 
+(`retrieval_issues.csv` and `pdf_extraction_failures.csv`) to ensure 
+the exclusions are not systematically concentrated in a way that would 
+bias the comparative analyses across states, session years, or party 
+control.
+
+
+```{python}
+#| label: verify-final-corpus
+
+from pathlib import Path
+
+txt_files = list(Path("bill_txt").glob("*.txt"))
+print(f"Total .txt files in final corpus: {len(txt_files)}")
+print(f"Bills excluded from text analysis: {3401 - len(txt_files)}")
+```
+
+**Output interpretation.** The first line reports the total number of 
+bills available for text analysis. In this project, the expected figure 
+is 3,395, depending on the number of true failures 
+across both the HTML retrieval and PDF extraction steps. A count at or 
+above 3,390 represents successful corpus assembly with minimal data loss 
+— well within an acceptable threshold for a corpus of this size. The 
+second line makes the exclusion count explicit rather than requiring 
+manual subtraction, providing the figure needed to report completeness 
+in the paper (e.g., "Full bill text was successfully retrieved and 
+extracted for X of 3,395 identified mental health bills"). Once this count 
+is confirmed, the corpus is fully assembled and ready for the 
+preprocessing pipeline in the Data Preparation section.
+
+
+### Step 9: Spot-Check a Random Sample of Plain-Text Files
+
+Automated file counts confirm that the expected number of `.txt` files 
+exist, but they cannot confirm that those files contain clean, readable, 
+substantively correct bill text. This chunk draws a random sample of five 
+files from the assembled corpus and prints a brief preview of each, 
+enabling a quick close-reading check before committing to the full 
+preprocessing pipeline.
+
+This kind of manual validation step is not optional. As Grimmer, Roberts, 
+and Stewart emphasize, computational text analysis requires the researcher 
+to maintain close contact with the underlying documents throughout the 
+pipeline — algorithmic outputs are only as trustworthy as the text they 
+are built on, and errors introduced during retrieval or extraction will 
+silently propagate through every downstream measure if not caught early. 
+Spot-checking at this stage catches several specific failure modes that 
+automated counts cannot detect: files that were written but contain only 
+whitespace or extraction noise, files whose content is garbled due to 
+encoding errors, files that contain the correct text but at an unusually 
+short length suggesting truncation, and files where PDF extraction 
+produced only page headers or footers rather than substantive bill 
+language.
+
+Printing both the character length and a 300-character preview for each 
+sampled file serves different diagnostic purposes. The length check gives 
+a rough sense of whether the file is plausibly a full bill — a real 
+introduced bill will typically be at least a few thousand characters, so 
+a file measuring only a few hundred characters warrants closer inspection. 
+The preview check gives a direct visual confirmation that the text looks 
+like legislative language rather than extraction artifacts, encoding 
+garbage, or boilerplate-only content.
+
+```{python}
+#| label: spot-check-corpus
+
+from pathlib import Path
+import random
+
+txt_files = list(Path("bill_txt").glob("*.txt"))
+samples = random.sample(txt_files, 5)
+
+for f in samples:
+    text = f.read_text(encoding="utf-8")
+    print(f"\n--- {f.name} ---")
+    print(f"Length: {len(text)} chars")
+    print(f"Preview: {text[:300]}")
+    print()
+```
+
+**Output interpretation.** Each of the five sampled files should produce 
+three lines: a filename, a character length, and a 300-character text 
+preview. Filenames follow the `{state}_{bill_number}_{doc_id}.txt` 
+convention established in Step 4, so the state and bill number are 
+immediately visible as a basic sanity check. Character lengths for full 
+introduced bills will vary considerably by state and bill type — a brief 
+one-page bill may be 2,000–5,000 characters, while a comprehensive 
+omnibus bill may exceed 100,000 characters — but any file below roughly 
+500 characters should be flagged and inspected manually. Previews should 
+begin with recognizable legislative language: enacting clauses such as 
+"AN ACT relating to..." or "Be it enacted by the Legislature...", section 
+headings, or definitional language are all normal. Because the sample is drawn randomly on each run, 
+I ran this chunk two times to inspect a broader 
+cross-section of the corpus. I found no issues, so I moved to preprocessing.
+
+
+
+# Data Preparation
+
+The Python pipeline in the Data Collection section produced two outputs: 
+a directory of 3,391+ UTF-8 plain-text bill files in `bill_txt/`, and a 
+structured metadata table in `metadata_mental_health.csv`. The Data 
+Preparation section picks up from those outputs and builds the data objects
+needed to answer my research questions.
+
+I need to produce the following data objects:
+1. Bill corpus table
+2. Political metadata table
+3. Domain dictionary table
+4. Token table
+5. N-gram table
+6. Named entity table
+7. Topic table
+
+These data objects need the following minimum variables:
+1. Bill corpus table: bill_id, state, session_year, bill_title, bill_text, date_introduced, chamber, bill_version_used
+2. Political metadata table: state, session_year, governor_party, upper_party, lower_party, party_control_type
+3. Domain dictionary table: domain, term_or_phrase, term_type (unigram/bigram/trigram), include/exclude notes
+4. Token table: bill_id, token, n, plus optional stemming/lemma fields
+5. N-gram table: bill_id, bigram/trigram, n, domain if matched
+6. Named entity table: bill_id, entity, entity_type
+7. Topic table: bill_id, topic, gamma/proportion
+
+These data objects matter because:
+1. Bill corpus table: This is the base corpus for every RQ.
+2. Political metadata table: Needed for RQ2 comparisons by Democratic, Republican, or divided control.
+3. Domain dictionary table: Needed for RQ1 and also to define “high-domain” bills in RQ3.
+4. Token table: Needed for TF, TF-IDF, and term distinctiveness.
+5. N-gram table: Needed for RQ1c and parts of RQ3.
+6. Named entity table: Needed for RQ3b and RQ3c.
+7. Topic table: Needed for RQ4 comparisons across domains, states, and years.
+
+## Bill corpus table
+
+This is the base corpus for every RQ.
+
+### Step 1: Parse the Filename
+
+You have already used readtext in Lab 5 for the UN General Debate corpus. The same approach applies here. Load your packages first:
+
+```{r}
+library(tidyverse)
+library(readtext)
+
+bill_texts <- readtext("bill_txt/*.txt", encoding = "UTF-8") %>%
+  mutate(
+    # Extract the numeric doc_id (third segment before .txt)
+    doc_id_key = as.integer(str_extract(doc_id, "(?<=_)\\d+(?=\\.txt$)")),
+    
+    # Extract state from filename as a validation check
+    state_from_file   = str_extract(doc_id, "^[A-Z]{2}"),
+    
+    # Extract bill_number from filename — also gives us chamber
+    bill_number_from_file = str_extract(doc_id, "(?<=_)[A-Za-z]+\\d+(?=_)")
+  )
+```
+
+Run head(bill_texts) to confirm doc_id_key is populated correctly before proceeding.
+
+### Step 2: Join on doc_id
+
+```{r}
+metadata <- read_csv("metadata_mental_health.csv")
+
+corpus_table <- metadata %>%
+  filter(
+    bill_type == "B",          # bills only — drops resolutions
+    special_session == 0,      # regular sessions only
+    text_type == "Introduced"  # introduced version only
+  ) %>%
+  left_join(bill_texts, by = c("doc_id" = "doc_id_key")) %>%
+  rename(bill_text = text, bill_title = title,
+         bill_version_used = text_type) %>%
+  select(bill_id, state, session_year, session_title,
+         bill_title, bill_text, date_introduced,
+         chamber, bill_version_used, sponsor_party)
+```
+
+## Step 3: Save the Bill Corpus Table
+
+```{r}
+write_csv(corpus_table, "data/corpus_table.csv")
+saveRDS(corpus_table, "data/corpus_table.rds")
+```
+
+## Political metadata table
+
+Needed for RQ2 comparisons by Democratic, Republican, or divided control.
+
+### Step 1: Structure the table
+
+Because your corpus covers only 10 states × at most 4 session years = 22 rows, this table is small enough to build manually in R as a tibble. That is actually the methodologically cleanest approach — it forces you to look up each value from an authoritative source, document it, and make deliberate coding decisions rather than relying on a scraped dataset that may have inconsistencies.
+
+Look up each state-year combination from this source, which covers everything you need:
+
+Legislative chamber control: NCSL State Partisan Composition — ncsl.org/about-state-legislatures/state-partisan-composition — published annually and archived by year
+
+Cross-check using Ballotpedia's State government trifectas page, which explicitly codes Democratic trifecta, Republican trifecta, and divided government by state and year in a single table.
+
+```{r}
+library(tidyverse)
+
+party_control <- tribble(
+  ~state, ~session_year, ~governor_party, ~upper_party, ~lower_party,
+  # --- Fill in each row from your source lookup ---
+  # upper_party = Senate control; lower_party = House/Assembly control
+  # Use "D", "R", or "Divided" for each cell
+  "CA",  2021,  "D",  "D",  "D",
+  "CA",  2023,  "D",  "D",  "D",
+  "FL",  2021,  "R",  "R",  "R",
+  "FL",  2022,  "R",  "R",  "R",
+  "FL",  2023,  "R",  "R",  "R",
+  "FL",  2024,  "R",  "R",  "R",
+  "GA",  2021,  "R",  "R",  "R",
+  "GA",  2023,  "R",  "R",  "R",
+  "IL",  2021,  "D",  "D",  "D",
+  "IL",  2023,  "D",  "D",  "D",
+  "NY",  2021,  "D",  "D",  "D",
+  "NY",  2023,  "D",  "D",  "D",
+  "OH",  2021,  "R",  "R",  "R",
+  "OH",  2023,  "R",  "R",  "R",
+  "PA",  2021,  "D",  "R",  "R",
+  "PA",  2023,  "D",  "R",  "D",
+  "TX",  2021,  "R",  "R",  "R",
+  "TX",  2023,  "R",  "R",  "R",
+  "WA",  2021,  "D",  "D",  "D",
+  "WA",  2023,  "D",  "D",  "D",
+  "WI",  2021,  "D",  "R",  "R",
+  "WI",  2023,  "D",  "R",  "R"
+)
+```
+
+### Step 2: Deriving party_control_type
+
+Once the raw table is filled in, derive the composite variable.
+
+This three-way classification maps directly to RQ2c: "Are certain domains more common under Democratic, Republican, or divided control?"
+
+```{r}
+party_control <- party_control %>%
+  mutate(
+    party_control_type = case_when(
+      governor_party == "D" & upper_party == "D" & lower_party == "D" ~ "Democratic",
+      governor_party == "R" & upper_party == "R" & lower_party == "R" ~ "Republican",
+      TRUE ~ "Divided"
+    )
+  )
+```
+
+### Step 3: Joining to Your Corpus Table
+
+```{r}
+corpus_table <- corpus_table %>%
+  left_join(party_control, by = c("state", "session_year"))
+
+# Verify every bill received a party_control_type
+sum(is.na(corpus_table$party_control_type))  # should be 0
+count(corpus_table, party_control_type)       # check distribution
+```
+
+### Step 4: Save the Political Metadata Table
+
+```{r}
+write_csv(party_control, "data/party_control.csv")
+```
+
+## Domain dictionary table
+
+This is a deductive, confirmatory approach — you already know the categories from the SDOH literature and Healthy People 2030 framework, and you are building a dictionary to test their presence in your corpus. You practiced exactly this in Lab 5 with the quanteda dictionary and policy agenda dictionary. The logic is identical here.
+
+### Step 1: DO NOT EDIT: Build the Initial Term List
+
+For each domain, work through three sources in order:
+
+1. Your own literature review — your Introduction and Literature Review already contain high-signal terms. Go back through your paper and extract every domain-specific noun and phrase you used. These are validated by the literature you cited.
+
+2. Healthy People 2030 domain pages — https://odphp.health.gov/healthypeople/priority-areas/social-determinants-health — each domain page lists key indicators and terminology that will surface in policy language.
+
+3. Inductive check — once you have a draft dictionary, run a quick frequency check on a sample of 20–30 bills and look for high-frequency domain-relevant terms you missed. This is the validation step the course readings call essential for dictionary methods.
+
+[Deleted so as to avoid confusion with final dictionary table in Step 3.]
+
+### Step 2: Inductive Check
+
+This is the inductive validation step, and it connects directly to what you practiced in Labs 3–5 with TF-IDF and frequency analysis. The goal is not to find the most common words overall (those will just be stopwords and generic legal language), but to find words that are both frequent and domain-adjacent — meaning they cluster around your SDOH concepts without being captured by your current dictionary.
+
+#### Step 2.1: Sample 20–30 Bills
+
+```{r}
+# set.seed(724)  # reproducible sample
+
+# sample_bills <- corpus_table %>%
+#   slice_sample(n = 30)
+```
+
+#### Step 2.2: Tokenize and Count Frequencies
+
+Using the tidytext approach from Lab 4 and Lab 5:
+
+```{r}
+# library(tidytext)
+
+# # Unigrams — remove stopwords and short tokens
+# sample_words <- sample_bills %>%
+#   unnest_tokens(word, bill_text) %>%
+#   anti_join(stop_words, by = "word") %>%
+#   filter(
+#     str_length(word) > 3,          # drop very short tokens
+#     !str_detect(word, "^\\d+$")    # drop pure numbers
+#   ) %>%
+#   count(word, sort = TRUE)
+
+# # Bigrams
+# sample_bigrams <- sample_bills %>%
+#   unnest_tokens(bigram, bill_text, token = "ngrams", n = 2) %>%
+#   separate(bigram, into = c("word1", "word2"), sep = " ") %>%
+#   filter(
+#     !word1 %in% stop_words$word,
+#     !word2 %in% stop_words$word
+#   ) %>%
+#   unite(bigram, word1, word2, sep = " ") %>%
+#   count(bigram, sort = TRUE)
+```
+
+#### Step 2.3: Identify What Is Domain-Relevant but Missing
+
+Now print the top terms and scan them manually:
+
+```{r}
+# print(sample_words,   n = 80)
+# print(sample_bigrams, n = 50)
+```
+
+A term is high-frequency if it appears in the top 100–150 unigrams or top 50 bigrams of your sample. A term is domain-relevant if you can honestly answer yes to both of these questions:
+
+Does this term refer specifically to a social condition, structural factor, or population characteristic — not just a clinical or procedural concept?
+
+Would a bill containing this term be doing something different from a bill that does not contain it — in terms of which upstream determinant it addresses?
+
+
+#### Step 2.4: Cross-Check Against Your Dictionary
+
+```{r}
+# # Which top-100 words are NOT already in your dictionary?
+# existing_terms <- domain_dictionary %>%
+#   pull(term_or_phrase)
+
+# sample_words %>%
+#   slice_head(n = 100) %>%
+#   filter(!word %in% existing_terms)   # shows candidates you may have missed
+```
+
+### Step 3: Finalize Domain dictionary table and save it
+
+```{r}
+library(tidyverse)
+
+domain_dictionary <- tribble(
+  ~domain,  ~term_or_phrase,  ~term_type,  ~notes,
+  # domain      = one of the 6 SDOMH domain labels (short, consistent)
+  # term_or_phrase = the actual word or phrase to search for (lowercase)
+  # term_type   = "unigram", "bigram", or "trigram"
+  # notes       = brief justification or flag (e.g., "ambiguous", "exclude in context X")
+  
+  "economic_stability",  "poverty",            "unigram",  "core term",
+  "economic_stability",  "unemployment",       "unigram",  "core term",
+  "economic_stability",  "food insecurity",    "bigram",   "core term",
+  "economic_stability",  "financial assistance","bigram",  "core term",
+  "economic_stability",  "employment","unigram",  "source: HP2030",
+  "economic_stability",  "food security","bigram",  "source: HP2030",
+  "economic_stability",  "housing cost","bigram",  "source: HP2030",
+  "economic_stability",  "housing instability","bigram",  "source: paper",
+  "economic_stability",  "housing loss","bigram",  "source: paper",
+  "economic_stability",  "income","unigram",  "source: paper; HP2030",
+  "economic_stability",  "job insecurity","bigram",  "source: paper",
+  "economic_stability",  "marital instability","bigram",  "source: paper",
+  "economic_stability",  "socioeconomic disadvantage","bigram",  "source: paper",
+  "economic_stability",  "child welfare","bigram",  "source: sample bills",
+  "economic_stability",  "safety net","bigram",  "Explicit reference to structural economic support programs",
+  "economic_stability",  "human services","bigram",  "Social safety net infrastructure; signals broad upstream social investment",
+  "education_access",  "early childhood","bigram",  "source: HP2030",
+  "education_access",  "graduation","unigram",  "source: HP2030",
+  "education_access",  "job training","bigram",  "source: HP2030",
+  "education_access",  "workforce training","bigram",  "source: sample bills",
+  "education_access",  "literacy","unigram",  "source: paper; HP2030",
+  "education_access",  "education","unigram",  "Structural social condition; bills invoking it address upstream educational determinants",
+  "education_access",  "child care","bigram",  "Early childhood structural factor; bills with it address developmental/educational determinants",
+  "education_access",  "day care","bigram",  "Early childhood structural factor",
+  "education_access",  "scholarship program","bigram",  "Educational access intervention addressing structural attainment barriers",
+  "healthcare_access",  "medicaid","unigram",  "A specific public insurance program for low-income populations; unambiguously upstream and structural",
+  "healthcare_access",  "health care access","trigram",  "source: paper",
+  "healthcare_access",  "health care delivery","trigram",  "source: paper",
+  "healthcare_access",  "health systems","bigram",  "source: paper",
+  "healthcare_access",  "telehealth","unigram",  "source: HP2030",
+  "healthcare_access",  "uninsured","unigram",  "source: HP2030",
+  "healthcare_access",  "hospitals","unigram",  "Structural care delivery infrastructure; signals healthcare access framing",
+  "healthcare_access",  "crisis response","bigram",  "source: sample bills",
+  "healthcare_access",  "loan repayment","bigram",  "Provider shortage/workforce access in underserved areas; clearly upstream structural signal",
+  "healthcare_access",  "managed care","bigram",  "Structural mechanism for Medicaid/low-income coverage delivery",
+  "healthcare_access",  "health care coverage","trigram",  "Source: sample bills",
+  "healthcare_access",  "developmental disabilities","bigram",  "Source: discovered when creating n-gram table",
+  "healthcare_access",  "designated crisis responder","trigram",  "Structural crisis intervention role; extends your crisis response bigram",
+  "healthcare_access",  "behavioral health services","trigram",  "Extends behavioral health bigram; strong SDOH signal",
+  "healthcare_access",  "emergency medical services","trigram",  "Structural emergency care infrastructure",
+  "healthcare_access",  "health care provider","trigram",  "Workforce access signal; more specific than provider unigram",
+  "healthcare_access",  "health care professional","trigram",  "Workforce access signal",
+  "neighborhood_environment",  "air quality","bigram",  "source: paper",
+  "neighborhood_environment",  "built environment","bigram",  "source: paper; HP2030",
+  "neighborhood_environment",  "green space","bigram",  "source: HP2030",
+  "neighborhood_environment",  "housing","unigram",  "source: paper; HP2030",
+  "neighborhood_environment",  "neighborhood","unigram",  "source: paper",
+  "neighborhood_environment",  "physical environments","bigram",  "source: paper",
+  "neighborhood_environment",  "pollution","unigram",  "source: paper",
+  "neighborhood_environment",  "transportation","unigram",  "source: HP2030",
+  "neighborhood_environment",  "unsafe physical environments","trigram",  "source: paper",
+  "neighborhood_environment",  "violence","unigram",  "source: paper; HP2030",
+  "neighborhood_environment",  "community health","bigram",  "Structural delivery of health in community settings; signals place-based framing",
+  "social_community",  "community context","bigram",  "source: paper",
+  "social_community",  "incarceration","unigram",  "source: HP2030",
+  "social_community",  "isolation","unigram",  "source: HP2030",
+  "social_community",  "lived experiences","bigram",  "source: paper",
+  "social_community",  "social disadvantage","bigram",  "source: paper",
+  "social_community",  "social support","bigram",  "source: paper; HP2030",
+  "social_community",  "community well-being","bigram",  "source: paper",
+  "social_community",  "substance abuse","bigram",  "Social condition with structural causes; distinct from clinical substance treatment language",
+  "social_community",  "substance use","bigram",  "As a social condition (substance use disorder)",
+  "social_community",  "drug court","bigram",  "source: sample bills",
+  "social_community",  "mental health court","trigram",  "source: sample bills",
+  "social_community",  "housing crisis","bigram",  "source: sample bills",
+  "social_community",  "peer support","bigram",  "source: sample bills",
+  "social_community",  "community safety","bigram",  "source: sample bills",
+  "social_community",  "suicide prevention","bigram",  "Explicitly upstream-oriented framing; bills with it address structural risk factors, not just clinical response",
+  "social_community",  "violence prevention","bigram",  "source: sample bills",
+  "social_community",  "family services","bigram",  "Social support infrastructure; bills with it address family-level structural conditions",
+  "social_community",  "community mental health","trigram",  "Place-based community care framing; distinct from clinical-only bills",
+  "social_community",  "law enforcement agency","trigram",  "Extends your existing law enforcement bigram with more specificity",
+  "social_community",  "law enforcement officer","trigram",  "Extends your existing law enforcement bigram with more specificity",
+  "social_community",  "addiction services provider","trigram",  "Substance use service delivery — structural social framing",
+  "discrimination_equity",  "discrimination","unigram",  "source: paper; HP2030",
+  "discrimination_equity",  "disparity","unigram",  "source: paper; HP2030",
+  "discrimination_equity",  "equity","unigram",  "source: paper; HP2030",
+  "discrimination_equity",  "health disparities","bigram",  "source: paper",
+  "discrimination_equity",  "health equity","bigram",  "source: paper",
+  "discrimination_equity",  "health inequities","bigram",  "source: paper",
+  "discrimination_equity",  "human rights","bigram",  "source: paper",
+  "discrimination_equity",  "inequities","unigram",  "source: paper",
+  "discrimination_equity",  "marginalized populations","bigram",  "source: paper",
+  "discrimination_equity",  "racism","unigram",  "source: paper; HP2030",
+  "discrimination_equity",  "social exclusion","bigram",  "source: paper",
+  "discrimination_equity",  "stigma","unigram",  "source: paper; HP2030",
+  "discrimination_equity",  "structural inequities","bigram",  "source: paper",
+  "discrimination_equity",  "structural racism","bigram",  "source: paper",
+  "discrimination_equity",  "systemic barriers","bigram",  "source: paper",
+  "discrimination_equity",  "systemic discrimination","bigram",  "source: paper",
+  "discrimination_equity",  "sickle cell","bigram",  "Disproportionately affects Black Americans; its presence signals racial equity framing in healthcare access",
+  "discrimination_equity",  "medical cannabis","bigram",  "Drug policy with documented racial equity dimensions"
+)
+
+# Run this to confirm balance across domains before finalizing
+count(domain_dictionary, domain, term_type) %>%
+  pivot_wider(names_from = term_type, values_from = n, values_fill = 0) %>%
+  mutate(total = rowSums(across(where(is.numeric))))
+
+write_csv(domain_dictionary, "data/domain_dictionary.csv")
+```
+
+
+## Token table
+
+The token table uses the exact same unnest_tokens workflow you practiced in Labs 2, 4, and 5 — the main difference for your project is that you have two preprocessing decisions that will meaningfully affect your RQ1 and RQ3 results.
+
+### Step 1: Tokenize and Remove Standard Stopwords
+
+```{r}
+library(tidytext)
+library(tidyverse)
+
+# Load built-in stopwords — draws from SMART, Snowball, onix lexicons
+data(stop_words)
+
+token_table <- corpus_table %>%
+  unnest_tokens(token, bill_text) %>%       # one token per row
+  anti_join(stop_words, by = c("token" = "word")) %>%  # remove stopwords
+  filter(
+    str_length(token) > 2,                  # drop very short tokens
+    !str_detect(token, "^\\d+$")            # drop pure numbers
+  )
+```
+
+After this step, token_table has one row per token per bill, with bill_id carried through from corpus_table. It does not yet have a count column — that comes in Step 3.
+
+### Step 2: Add Custom Legislative Stopwords
+
+Legal bill text contains boilerplate that will dominate your frequency tables but carry no substantive meaning. Add a custom exclusion list before counting:
+
+```{r}
+legal_stopwords <- tibble(token = c(
+  "shall", "section", "subsection", "pursuant", "thereof",
+  "therein", "hereby", "herein", "notwithstanding", "provided",
+  "effective", "act", "code", "chapter", "article",
+  "subdivision", "paragraph", "clause", "amended", "enacted",
+  "legislature", "assembly", "senate", "bill", "statute",
+
+  # Procedural boilerplate from top-30 check
+  "means", "including", "read", "revised", "period",
+  "hundred", "provide", "division",
+
+  # Corpus constants from top-30 check
+  "health", "mental", "services", "department", "care",
+  "treatment", "program", "public", "board", "medical",
+  "information", "facility", "licensed", "license",
+  "practice", "service",
+
+  # Noise from second top-30 check 
+  "person", "persons", "date", "thousand", "include",
+  "required", "requirements", "defined", "introduced", "rules",
+  "subject", "time", "law",
+
+  # State names
+  "illinois", "california", "florida", "georgia", "new",
+  "york", "ohio", "pennsylvania", "texas", "washington",
+  "wisconsin",
+
+  # Noise from third top-30 check
+  "laws", "based", "authorized", "amount", "limited",
+  "provisions",
+
+  # Month names
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+
+  # Noise from fourth top-30 check
+  "accordance", "effect", "term",
+
+  # Noise from fifth top-30 check
+  "days", "purposes"
+))
+
+token_table <- token_table %>%
+  anti_join(legal_stopwords, by = "token")
+```
+
+You will almost certainly need to expand this list after you see your first frequency output. Keep the custom stopword list in a separate object so you can add to it without rerunning everything.
+
+### Step 3: Count to Get the n Column
+
+```{r}
+token_table <- token_table %>%
+  count(bill_id, token, sort = FALSE, name = "n")
+```
+
+This collapses to one row per unique token per bill and adds the n (count) column you need. Your minimum schema is now complete: bill_id, token, n.
+
+### Step 4: Optional Stemming
+
+This is your first major decision. Stemming reduces "housing", "houses", "housed" to "hous" — it increases recall (you catch more variants) but reduces interpretability (stems are not real words). The course labs used SnowballC::wordStem() for stemming:
+
+```{r}
+library(SnowballC)
+
+token_table <- token_table %>%
+  mutate(stem = wordStem(token, language = "english"))
+```
+
+Adding stem as an optional column alongside token is the cleanest approach — it lets you use raw tokens for RQ1a frequency tables (which need readable words) and stems for RQ1b TF-IDF (where matching variants is more important). Do not replace token with stem; keep both.
+
+### Step 5: Validate Before Saving
+
+```{r}
+# How many unique tokens remain after cleaning?
+n_distinct(token_table$token)
+
+# Top 30 tokens across full corpus — check for remaining boilerplate
+token_table %>%
+  group_by(token) %>%
+  summarise(total = sum(n)) %>%
+  slice_max(total, n = 30) %>%
+  print(n = 30)
+
+# Average tokens per bill — sanity check on text length
+token_table %>%
+  group_by(bill_id) %>%
+  summarise(tokens_per_bill = sum(n)) %>%
+  summarise(mean = mean(tokens_per_bill), 
+            median = median(tokens_per_bill),
+            min = min(tokens_per_bill),
+            max = max(tokens_per_bill))
+```
+
+#### Save
+
+```{r}
+write_csv(token_table, "data/token_table.csv")
+saveRDS(token_table, "data/token_table.rds")
+```
+
+## N-gram table
+
+The n-gram table follows the same unnest_tokens pattern as the token table, but requires two extra steps that do not apply to unigrams: stopword filtering works differently for n-grams, and domain matching requires a direct join rather than a dictionary lookup.
+
+### Step 0: Build Custom Stopword List for N-grams
+
+```{r}
+# Words to protect — confirmed by systematic conflict check
+conflict_words <- c("health", "mental", "services", "care",
+                    "program", "medical", "law")
+
+# N-gram component list = legal_stopwords minus the conflict words
+ngram_component_stopwords <- legal_stopwords %>%
+  filter(!token %in% conflict_words)
+
+# Verify the protected words are gone
+ngram_component_stopwords %>%
+  filter(token %in% conflict_words)
+# Should return 0 rows
+```
+
+### Step 1: Build Bigrams
+
+```{r}
+bigram_table <- corpus_table %>%
+  unnest_tokens(bigram, bill_text, token = "ngrams", n = 2) %>%
+  
+  # Separate into component words for stopword filtering
+  separate(bigram, into = c("word1", "word2"), sep = " ", remove = FALSE) %>%
+  
+  # Remove if EITHER word is a stopword or custom stopword
+  filter(
+    !word1 %in% stop_words$word,
+    !word2 %in% stop_words$word,
+    !word1 %in% ngram_component_stopwords$token,
+    !word2 %in% ngram_component_stopwords$token,
+    !str_detect(word1, "^\\d+$"),
+    !str_detect(word2, "^\\d+$"),
+    str_length(word1) > 2,
+    str_length(word2) > 2
+  ) %>%
+  
+  select(bill_id, bigram, word1, word2) %>%
+  count(bill_id, bigram, sort = FALSE, name = "n")
+```
+
+### Step 2: Build Trigrams
+
+```{r}
+trigram_table <- corpus_table %>%
+  unnest_tokens(trigram, bill_text, token = "ngrams", n = 3) %>%
+  
+  separate(trigram, into = c("word1", "word2", "word3"), sep = " ", remove = FALSE) %>%
+  
+  filter(
+    !word1 %in% stop_words$word,
+    !word2 %in% stop_words$word,
+    !word3 %in% stop_words$word,
+    !word1 %in% ngram_component_stopwords$token,
+    !word2 %in% ngram_component_stopwords$token,
+    !word3 %in% ngram_component_stopwords$token,
+    !str_detect(word1, "^\\d+$"),
+    !str_detect(word2, "^\\d+$"),
+    !str_detect(word3, "^\\d+$")
+  ) %>%
+  
+  select(bill_id, trigram, word1, word2, word3) %>%
+  count(bill_id, trigram, sort = FALSE, name = "n")
+```
+
+### Step 3: Add Domain Matching
+
+This is the domain column in your minimum schema. Join your domain dictionary against the n-gram tables — terms that match get a domain label; everything else gets NA:
+
+```{r}
+# Extract only bigrams and trigrams from your dictionary
+dict_bigrams  <- domain_dictionary %>% 
+  filter(term_type == "bigram") %>%
+  select(term_or_phrase, domain)
+
+dict_trigrams <- domain_dictionary %>% 
+  filter(term_type == "trigram") %>%
+  select(term_or_phrase, domain)
+
+# Join domain labels
+bigram_table <- bigram_table %>%
+  left_join(dict_bigrams, by = c("bigram" = "term_or_phrase"))
+
+trigram_table <- trigram_table %>%
+  left_join(dict_trigrams, by = c("trigram" = "term_or_phrase"))
+```
+
+After this join, domain will be populated for dictionary-matching n-grams and NA for all others. This is intentional — the NA rows are still needed for RQ1c (most frequent n-grams overall) and RQ3 (distinctive phrases in high-domain bills).
+
+### Step 4: Combine into One N-gram Table
+
+Your minimum schema asks for bill_id, bigram/trigram, n, domain — combine both into a single tidy table with a ngram_type indicator:
+
+```{r}
+ngram_table <- bind_rows(
+  bigram_table  %>% rename(ngram = bigram)  %>% mutate(ngram_type = "bigram"),
+  trigram_table %>% rename(ngram = trigram) %>% mutate(ngram_type = "trigram")
+) %>%
+  select(bill_id, ngram_type, ngram, n, domain)
+
+markup_ngrams <- tibble(ngram = c(
+  # Bigram artifacts
+  "coding words", "deletions words", "words stricken",
+  "words underlined", "additions page", "source p.a",
+  "assem bly", "explanation matter", "italics underscored",
+  
+  # Trigram artifacts
+  "coding words stricken",      # markup
+  "deletions words underlined", # markup
+  "drug involved equals",        # bill amendment tracking artifact
+  "mental hygiene law",         # New York Mental Hygiene Law is not a content signal
+  "social services law"          # same issue as above; another NY statutory citation
+))
+
+ngram_table <- ngram_table %>%
+  anti_join(markup_ngrams, by = "ngram")
+```
+
+#### Validate Before Saving
+
+```{r}
+# Top 20 bigrams across corpus
+ngram_table %>%
+  filter(ngram_type == "bigram") %>%
+  group_by(ngram) %>%
+  summarise(total = sum(n)) %>%
+  slice_max(total, n = 20) %>%
+  print(n = 20)
+
+# Top 20 trigrams
+ngram_table %>%
+  filter(ngram_type == "trigram") %>%
+  group_by(ngram) %>%
+  summarise(total = sum(n)) %>%
+  slice_max(total, n = 20) %>%
+  print(n = 20)
+
+# How many n-grams matched a domain?
+count(ngram_table, ngram_type, is.na(domain))
+
+# Domain coverage — how many unique matched n-grams per domain?
+ngram_table %>%
+  filter(!is.na(domain)) %>%
+  distinct(ngram, domain) %>%
+  count(domain, sort = TRUE)
+```
+
+### Step 5: Save
+
+```{r}
+write_csv(ngram_table, "data/ngram_table.csv")
+saveRDS(ngram_table, "data/ngram_table.rds")
+```
+
+Since you added several trigrams, make sure the dictionary object on disk reflects the current state:
+
+```{r}
+write_csv(domain_dictionary, "data/domain_dictionary.csv")
+```
+
+
+## Named entity table
+
+The named entity table is built differently from the token and n-gram tables because it requires a linguistic model rather than pattern-based tokenization — you practiced this in Lab 7 using the spacyr package, which wraps Python's spaCy library. The workflow is the same here, applied to your corpus.
+
+### Before You Start: Two Setup Checks
+
+```{r}
+Sys.setenv(RETICULATE_PYTHON = "C:/Users/jakef/anaconda3/envs/textmining/python.exe")
+library(spacyr)
+library(tidyverse)
+
+# Check spaCy is initialized — you did this in Lab 7
+spacy_initialize(model = "en_core_web_lg")
+
+# Confirm it works on a single bill first
+test <- spacy_parse(
+  corpus_table$bill_text[1],
+  pos = TRUE,
+  tag = TRUE,
+  entity = TRUE
+)
+head(test, 20)
+```
+
+### Stage 1: Parse the Full Corpus
+
+Now run the full parse loop:
+
+```{r}
+spacy_initialize(model = "en_core_web_lg")
+reticulate::py_run_string("nlp.max_length = 1600000")
+
+MAX_CHARS  <- 1500000
+parsed_list <- list()
+
+for (i in seq_len(nrow(corpus_table))) {
+  bill_id   <- corpus_table$bill_id[i]
+  bill_text <- corpus_table$bill_text[i]
+  
+  if (is.na(bill_text) || nchar(bill_text) == 0) next
+  
+  if (nchar(bill_text) > MAX_CHARS) {
+    message("Truncating bill_", bill_id, " (", nchar(bill_text), " chars)")
+    bill_text <- substr(bill_text, 1, MAX_CHARS)
+  }
+  
+  result <- tryCatch({
+    txt <- bill_text
+    names(txt) <- paste0("bill_", bill_id)
+    spacy_parse(txt, entity = TRUE,
+                pos = FALSE, tag = FALSE, lemma = FALSE)
+  }, error = function(e) {
+    message("Skipping bill_", bill_id, " — ", conditionMessage(e))
+    NULL
+  })
+  
+  if (!is.null(result)) {
+    parsed_list[[length(parsed_list) + 1]] <- result
+  }
+  
+  if (i %% 100 == 0) cat("Processed", i, "of", nrow(corpus_table), "\n")
+}
+
+parsed <- bind_rows(parsed_list)
+```
+
+Save the raw parsed output immediately after it completes — before doing any further processing — so you never have to rerun the parse:
+
+```{r}
+saveRDS(parsed, "data/parsed_entities_raw.rds")
+```
+
+The parse completed cleanly — all 3,169 bills processed, only the two NY budget bills truncated (the two OH bills came in under 1.5M so they were not affected), and zero skipped bills. The raw parse is safely saved. Now run the consolidation and cleaning pipeline:
+
+### Stage 2: Consolidate and Build Entity Table
+
+```{r}
+library(spacyr)
+library(tidyverse)
+
+# Consolidate multi-token entities (e.g., "New York" as one ORG entity)
+entities_raw <- entity_consolidate(parsed) %>%
+  filter(entity_type != "")
+
+# Recover bill_id and normalize
+entity_table <- entities_raw %>%
+  mutate(
+    bill_id     = as.numeric(str_remove(doc_id, "bill_")),
+    entity      = str_squish(str_to_lower(token))
+  ) %>%
+  select(bill_id, entity, entity_type) %>%
+  count(bill_id, entity, entity_type, name = "n", sort = FALSE)
+```
+
+### Stage 3: Filter to Relevant Entity Types
+
+```{r}
+relevant_types <- c("ORG", "GPE", "LAW", "PERSON", "NORP")
+
+entity_table <- entity_table %>%
+  filter(entity_type %in% relevant_types)
+```
+
+### Stage 4: Validate
+
+```{r}
+# Entity type distribution
+count(entity_table, entity_type, sort = TRUE)
+
+# Top 20 ORG entities
+entity_table %>%
+  filter(entity_type == "ORG") %>%
+  group_by(entity) %>%
+  summarise(total = sum(n), bills = n_distinct(bill_id)) %>%
+  slice_max(total, n = 20) %>%
+  print(n = 20)
+
+# Top 20 LAW entities
+entity_table %>%
+  filter(entity_type == "LAW") %>%
+  group_by(entity) %>%
+  summarise(total = sum(n), bills = n_distinct(bill_id)) %>%
+  slice_max(total, n = 20) %>%
+  print(n = 20)
+```
+
+There are two separate issues here — ORG has cleanable noise, but LAW has a fundamental recognition problem that requires a different approach.
+
+#### ORG Entities: Cleanable with a Stopword Pass
+
+Several ORG entities are artifacts or procedural references:
+
+Remove these:
+
+```{r}
+org_stopwords <- tibble(entity = c(
+  "sec",                               # section reference misclassified as ORG
+  "rcw",                               # Revised Code of Washington citation
+  "rlc",                               # citation artifact
+  "hb", "sb",                          # bill number prefixes
+  "state",                             # too generic
+  "senate", "legislature",             # procedural bodies
+  "the_general_assembly",              # procedural
+  "commonwealth",                      # Pennsylvania's formal name — generic
+  "the_people_of_the_state_of_illinois",  # preamble boilerplate
+  "the_people_of_the_state_of_new_york",  # preamble boilerplate
+  "department",                        # too generic — specific dept names stay
+  "commission"                         # too generic — specific ones stay
+))
+
+entity_table <- entity_table %>%
+  anti_join(org_stopwords, by = "entity")
+```
+
+Keep these — all are meaningful for RQ3:
+
+medicaid — unambiguously meaningful healthcare access signal
+
+the_department_of_human_services — structural social services actor
+
+the_department_of_health — healthcare access actor
+
+the_department_of_public_health — same
+
+the_illinois_department — incomplete but recoverable; keep for now
+
+health_and_safety_code — signals healthcare regulatory framing
+
+
+#### LAW Entities: A Fundamental Problem
+
+Your top 20 LAW entities are almost entirely section and chapter number references — section_1, section_2, chapter_57, section_2929.13. This is happening because spaCy's LAW entity recognizer, trained on news and web text, interprets legislative cross-references ("see section 5", "pursuant to chapter 57") as named laws rather than internal citations.
+
+This means the LAW entity type as captured is not useful for RQ3c as intended. To decide what to do, I ran the following:
+
+```{r}
+entity_table %>%
+  filter(entity_type == "LAW",
+         !str_detect(entity, 
+           "^section|^chapter|^subsection|^subdivision|^article|_code$|public_act")) %>%
+  group_by(entity) %>%
+  summarise(total = sum(n), bills = n_distinct(bill_id)) %>%
+  slice_max(total, n = 20) %>%
+  print(n = 20)
+```
+
+The output shows the problem is systemic, not fixable with more filtering:
+
+page_2, page_5, page_4, page_11 — page number artifacts misclassified as laws
+
+the_criminal_code_of — incomplete truncated phrase
+
+title_7, title_eleven — title number references, not named laws
+
+the_use_tax_act, occupation_tax_act, the_service_occupation_tax_act — tax law citations irrelevant to SDOH
+
+act — too generic to mean anything
+
+cpf_15570 — uninterpretable artifact
+
+The only genuinely meaningful named law in the entire top 20 is social_security_act at 37 bills. That is far too thin a signal to justify keeping the LAW type, and it can be captured more reliably as a bigram in your n-gram table.
+
+Therefore, I chose to Drop LAW entities entirely and rely on your n-gram table's domain column to capture references to structural legal frameworks. The medicaid ORG entity and dictionary terms like "managed care" and "health care coverage" already capture federal law references indirectly.
+
+#### Final Entity Table Build
+
+```{r}
+# Drop LAW entirely — signal too weak after cleaning
+entity_table <- entity_table %>%
+  filter(entity_type != "LAW") %>%
+  anti_join(org_stopwords, by = "entity")
+
+# Confirm final entity type distribution
+count(entity_table, entity_type, sort = TRUE)
+
+# Final top 20 ORG — should now be clean
+entity_table %>%
+  filter(entity_type == "ORG") %>%
+  group_by(entity) %>%
+  summarise(total = sum(n), bills = n_distinct(bill_id)) %>%
+  slice_max(total, n = 20) %>%
+  print(n = 20)
+```
+
+Good progress — medicaid and the department entities are clean, but there are several more artifacts to remove. One more cleaning pass:
+
+#### Add to org_stopwords and Re-filter
+
+```{r}
+org_stopwords <- bind_rows(org_stopwords, tibble(entity = c(
+  "board",                                    # too generic
+  "blank",                                    # formatting artifact
+  "general_assembly_state",                   # fragmented preamble text
+  "general_assembly_state_of",                # same
+  "the_legislature_of_the_state_of_texas_:",  # preamble boilerplate with punctuation artifact
+  "general_assembly",                         # procedural body
+  "the_house_of_representatives",             # procedural body
+  "lc",                                       # citation abbreviation artifact
+  "l.s.d."                                    # abbreviation artifact
+)))
+
+entity_table <- entity_table %>%
+  anti_join(org_stopwords, by = "entity")
+```
+
+Keep these — all are meaningful:
+
+the_illinois_state_police — law enforcement institutional actor; relevant to social_community framing
+
+medicare — structural federal health program alongside medicaid
+
+the_interstate_commission — multi-state regulatory body; meaningful structural actor
+
+mco — managed care organization; directly relevant to healthcare_access
+
+the_state_department_of_health_care_services — California's Medicaid agency; meaningful
+
+the_department_of_human_services, the_department_of_health, the_department_of_public_health — all confirmed structural actors
+
+One ambiguous entry:
+mco appears in 6 bills with 286 occurrences — that is a high frequency for only 6 bills, suggesting it dominates those specific bills. It is a legitimate managed care abbreviation, but check whether those 6 bills are all from one state:
+
+```{r}
+entity_table %>%
+  filter(entity == "mco") %>%
+  left_join(corpus_table %>% select(bill_id, state), by = "bill_id") %>%
+  count(state)
+```
+
+All 6 are from one state (IL).
+
+After re-filtering, run the top 20 ORG one final time and share it. The list should now be substantively clean throughout.
+
+```{r}
+entity_table %>%
+  filter(entity_type == "ORG") %>%
+  group_by(entity) %>%
+  summarise(total = sum(n), bills = n_distinct(bill_id)) %>%
+  slice_max(total, n = 20) %>%
+  print(n = 20)
+```
+
+Three more to remove, then the ORG list is confirmed clean:
+
+```{r}
+org_stopwords <- bind_rows(org_stopwords, tibble(entity = c(
+  "california_legislature",   # procedural body — state-specific preamble
+  "assembly",                 # procedural body
+  "no_fiscal_committee",      # CA bill header artifact
+  "usc"                       # legal citation abbreviation (U.S. Code)
+)))
+
+entity_table <- entity_table %>%
+  anti_join(org_stopwords, by = "entity")
+```
+
+Everything else is confirmed meaningful:
+
+| Entity                                       | Why it stays                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------- |
+| medicaid                                     | Core healthcare access structural program                           |
+| health_and_safety_code                       | CA regulatory framework reference                                   |
+| the_department_of_human_services             | Social services structural actor                                    |
+| the_illinois_department                      | IL agency reference — keep despite truncation                       |
+| the_department_of_health                     | Healthcare structural actor                                         |
+| the_department_of_public_health              | Same                                                                |
+| the_illinois_state_police                    | Law enforcement institutional actor                                 |
+| medicare                                     | Federal health program — structural                                 |
+| the_interstate_commission                    | Multi-state regulatory body                                         |
+| mco                                          | Managed care organization                                           |
+| the_state_department_of_health_care_services | CA Medicaid agency                                                  |
+| the_state_board_of_education                 | Education structural actor — meaningful for RQ3                     |
+| medi_-_cal                                   | California's Medicaid program — equivalent to medicaid for CA bills |
+| the_nursing_home_care_act                    | Long-term care structural framing                                   |
+| the_welfare_and_institutions_code            | CA welfare structural framework                                     |
+| the_health_and_safety_code                   | Duplicate of health_and_safety_code with article — keep both        |
+
+### Named Entity Table: Confirmed Complete
+
+```{r}
+write_csv(entity_table, "data/entity_table.csv")
+saveRDS(entity_table, "data/entity_table.rds")
+spacy_finalize()
+```
+
+## Topic table
+
+The topic table is built using Latent Dirichlet Allocation (LDA) from the topicmodels package, which you practiced in Lab 9 with the Associated Press dataset. The core workflow follows the same pattern: token counts → DTM → LDA model → extract gamma. The key difference for your project is that each bill is a document, and gamma becomes the proportion variable you need.
+
+### Stage 1: Build Word Counts from Your Token Table
+
+Your token table already exists and is clean — use it directly rather than re-tokenizing:
+
+```{r}
+library(topicmodels)
+library(tidytext)
+library(tidyverse)
+
+# Reuse token table — filter to content-bearing words only
+word_counts <- token_table %>%
+  count(bill_id, token, sort = FALSE)
+```
+
+### Stage 2: Cast to a DTM
+
+Just as in Lab 9, cast_dtm() converts the tidy one-token-per-row format into the Document-Term Matrix that LDA() requires:
+
+```{r}
+bills_dtm <- word_counts %>%
+  cast_dtm(bill_id, token, n)
+
+bills_dtm   # inspect dimensions — should show 3169 documents
+```
+
+Check for and remove empty documents before proceeding:
+
+```{r}
+# Remove rows with all zeros (bills that lost all tokens after cleaning)
+bills_dtm <- bills_dtm[rowSums(as.matrix(bills_dtm)) > 0, ]
+```
+
+### Stage 3: Choosing K — A Critical Decision
+
+Unlike the Lab 9 sanity check where k=4 was known in advance because there were four books, your corpus requires you to justify k empirically and theoretically. The Text as Data reading cautions that statistical fit metrics alone are insufficient — substantive fit must guide k selection.
+
+Run candidate models at several values and compare:
+
+```{r}
+# Test k values — this will take time
+candidate_k <- c(10, 15, 20, 25, 30)
+
+perplexity_scores <- map_dbl(candidate_k, function(k) {
+  model <- LDA(bills_dtm, k = k, 
+               control = list(seed = 1234))
+  perplexity(model, bills_dtm)
+})
+
+# Plot perplexity — look for the "elbow"
+tibble(k = candidate_k, perplexity = perplexity_scores) %>%
+  ggplot(aes(k, perplexity)) +
+  geom_line() + geom_point() +
+  labs(title = "LDA Perplexity by Number of Topics",
+       x = "Number of Topics (k)", y = "Perplexity")
+```
+
+Recommended Value: k = 20
+Here is the reasoning based on both the plot and your corpus characteristics:
+
+The steepest perplexity drop occurs between k=10 and k=15 — those k values are too coarse for a corpus covering multiple states, years, and policy domains
+
+The rate of decrease visibly slows between k=20 and k=25, suggesting diminishing substantive returns beyond k=20
+
+With 3,169 bills spanning 8+ states across 4+ years, k=20 gives enough granularity to capture variation across states and time for RQ4 without producing topics too narrow to interpret
+
+k=20 is consistent with topic modeling norms in political science legislative text analysis, where corpora of similar size typically use 15–25 topics
+
+### Stage 4: Fit the Final LDA Model
+
+```{r}
+bills_lda <- LDA(bills_dtm, 
+                 k = 20, 
+                 control = list(seed = 1234))
+
+bills_lda  # confirm: "A LDA/VEM topic model with 20 topics"
+
+saveRDS(bills_lda, "data/bills_lda_model.rds")
+```
+
+#### After Fitting k=20, Validate Substantively
+
+The perplexity plot justifies the range — the final decision must come from reading the top terms:
+
+```{r}
+# Top 10 terms per topic — inspect for substantive coherence
+tidy(bills_lda, matrix = "beta") %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>%
+  ungroup() %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~topic, scales = "free_y") +
+  scale_y_reordered() +
+  labs(title = "Top 10 Terms per Topic", x = "Beta", y = NULL)
+```
+
+This is a strong and largely interpretable set of topics — k=20 is confirmed. However, there are 6 artifact topics that need to be addressed before saving. Here is a full diagnostic breakdown:
+
+#### Topic Labels — Substantively Meaningful (14 topics)
+
+| Topic | Key Terms                                   | Suggested Label                      |
+| ----- | ------------------------------------------- | ------------------------------------ |
+| 1     | involuntary, inpatient, rcw, hospital       | Involuntary/Inpatient Treatment (WA) |
+| 2     | felony, possess, dealer, dangerous          | Drug Crime & Penalties               |
+| 3     | pregnant, prenatal, screening, nurse        | Maternal & Prenatal Health           |
+| 8     | laboratory, dentist, institutions, devices  | Healthcare Facilities & Licensing    |
+| 9     | governor, appointed, duties, agencies       | Advisory Bodies & Task Forces        |
+| 10    | professional, degree, examination, clinical | Workforce Licensing                  |
+| 11    | equity, procedure, cost, addressing         | Policy Equity & Conditions           |
+| 12    | audit, comptroller, fund, paid              | Budget & Fiscal Provisions           |
+| 13    | licensure, disclosure, records, immunity    | Licensing & Privacy Records          |
+| 15    | corporation, controlled, body, devices      | Corporate & Regulatory               |
+| 16    | coverage, insurance, medicaid, benefits     | Insurance & Medicaid Coverage        |
+| 18    | education, school, students, community      | Education & Community                |
+| 19    | court, criminal, attorney, convicted        | Criminal Justice                     |
+| 4     | business, control, receipt, entity          | General Regulatory Procedures        |
+
+Topics 16, 18, and 19 are your strongest SDOH-relevant topics for RQ4.
+
+#### Artifact Topics — Require Action (6 topics)
+
+| Topic | Evidence                                   | Cause                                              |
+| ----- | ------------------------------------------ | -------------------------------------------------- |
+| 5     | fiscal, digest, counsel's, text            | Bill digest/fiscal note headers — CA/IL formatting |
+| 6     | f.s., additions, deletions, amending       | Florida Statutes citation format                   |
+| 7     | commonwealth, printer's, referred          | Pennsylvania boilerplate                           |
+| 14    | ilcs, p.a., synopsis, source               | Illinois Compiled Statutes formatting              |
+| 17    | assem, bly, italics, brackets, underscored | Pure markup artifact — worst offender              |
+| 20    | lrb, bureau, referred                      | Wisconsin Legislative Reference Bureau             |
+
+Topic 17 is the most serious — assem + bly are split tokens from the word "assembly" being broken across a line, meaning your OCR/text processing split some words. The others are state-specific legislative header terms that passed through your custom stopword list.
+
+Accept k=20, label artifact topics as "procedural_artifact", and exclude them from all RQ4 comparisons.
+
+#### Step 1: Create the Topic Labels Table
+
+```{r}
+topic_labels <- tibble(
+  topic = 1:20,
+  topic_label = c(
+    "Involuntary & Inpatient Treatment",   # 1
+    "Drug Crime & Penalties",              # 2
+    "Maternal & Prenatal Health",          # 3
+    "General Regulatory Procedures",       # 4
+    "procedural_artifact",                 # 5 — bill digest headers
+    "procedural_artifact",                 # 6 — Florida Statutes format
+    "procedural_artifact",                 # 7 — Pennsylvania boilerplate
+    "Healthcare Facilities & Licensing",   # 8
+    "Advisory Bodies & Task Forces",       # 9
+    "Workforce Licensing",                 # 10
+    "Policy Equity & Conditions",          # 11
+    "Budget & Fiscal Provisions",          # 12
+    "Licensing & Privacy Records",         # 13
+    "procedural_artifact",                 # 14 — Illinois ILCS format
+    "Corporate & Regulatory",              # 15
+    "Insurance & Medicaid Coverage",       # 16
+    "procedural_artifact",                 # 17 — markup artifacts
+    "Education & Community",               # 18
+    "Criminal Justice",                    # 19
+    "procedural_artifact"                  # 20 — Wisconsin LRB format
+  ),
+  is_artifact = c(
+    FALSE, FALSE, FALSE, FALSE,
+    TRUE, TRUE, TRUE,
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
+    TRUE,
+    FALSE,
+    FALSE, TRUE, FALSE, FALSE, TRUE
+  )
+)
+```
+
+#### Step 2: Join Labels to Topic Table
+
+```{r}
+topic_table <- tidy(bills_lda, matrix = "gamma") %>%
+  rename(
+    bill_id = document,
+    topic   = topic,
+    gamma   = gamma
+  ) %>%
+  mutate(bill_id = as.numeric(bill_id)) %>%
+  left_join(topic_labels, by = "topic")
+```
+
+#### Step 3: Validate
+
+```{r}
+# Confirm label join worked
+count(topic_table, topic, topic_label, is_artifact)
+
+# Confirm artifact vs. substantive split
+topic_table %>%
+  distinct(topic, topic_label, is_artifact) %>%
+  count(is_artifact)
+# Should show: FALSE = 14, TRUE = 6
+
+# Quick gamma check — dominant topic per bill (substantive only)
+topic_table %>%
+  filter(!is_artifact) %>%
+  group_by(bill_id) %>%
+  slice_max(gamma, n = 1) %>%
+  count(topic_label, sort = TRUE)
+```
+
+#### Step 4: Save
+
+```{r}
+write_csv(topic_table, "data/topic_table.csv")
+saveRDS(topic_table, "data/topic_table.rds")
+saveRDS(bills_lda, "data/bills_lda_model.rds")
+write_csv(topic_labels, "data/topic_labels.csv")
+```
+

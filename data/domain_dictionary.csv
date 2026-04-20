@@ -1,0 +1,92 @@
+domain,term_or_phrase,term_type,notes
+economic_stability,poverty,unigram,core term
+economic_stability,unemployment,unigram,core term
+economic_stability,food insecurity,bigram,core term
+economic_stability,financial assistance,bigram,core term
+economic_stability,employment,unigram,source: HP2030
+economic_stability,food security,bigram,source: HP2030
+economic_stability,housing cost,bigram,source: HP2030
+economic_stability,housing instability,bigram,source: paper
+economic_stability,housing loss,bigram,source: paper
+economic_stability,income,unigram,source: paper; HP2030
+economic_stability,job insecurity,bigram,source: paper
+economic_stability,marital instability,bigram,source: paper
+economic_stability,socioeconomic disadvantage,bigram,source: paper
+economic_stability,child welfare,bigram,source: sample bills
+economic_stability,safety net,bigram,Explicit reference to structural economic support programs
+economic_stability,human services,bigram,Social safety net infrastructure; signals broad upstream social investment
+education_access,early childhood,bigram,source: HP2030
+education_access,graduation,unigram,source: HP2030
+education_access,job training,bigram,source: HP2030
+education_access,workforce training,bigram,source: sample bills
+education_access,literacy,unigram,source: paper; HP2030
+education_access,education,unigram,Structural social condition; bills invoking it address upstream educational determinants
+education_access,child care,bigram,Early childhood structural factor; bills with it address developmental/educational determinants
+education_access,day care,bigram,Early childhood structural factor
+education_access,scholarship program,bigram,Educational access intervention addressing structural attainment barriers
+healthcare_access,medicaid,unigram,Public insurance program; upstream structural support
+healthcare_access,health care access,trigram,source: paper
+healthcare_access,health care delivery,trigram,source: paper
+healthcare_access,health systems,bigram,source: paper
+healthcare_access,telehealth,unigram,source: HP2030
+healthcare_access,uninsured,unigram,source: HP2030
+healthcare_access,hospitals,unigram,Structural care delivery infrastructure; signals healthcare access framing
+healthcare_access,crisis response,bigram,source: sample bills
+healthcare_access,loan repayment,bigram,Provider shortage/workforce access in underserved areas; upstream structural signal
+healthcare_access,managed care,bigram,Structural mechanism for Medicaid/low-income coverage delivery
+healthcare_access,health care coverage,trigram,source: sample bills
+healthcare_access,developmental disabilities,bigram,source: n-gram diagnostics
+healthcare_access,designated crisis responder,trigram,Structural crisis intervention role; extends crisis response bigram
+healthcare_access,behavioral health services,trigram,Extends behavioral health bigram; strong SDOH signal
+healthcare_access,emergency medical services,trigram,Structural emergency care infrastructure
+healthcare_access,health care provider,trigram,Workforce access signal; more specific than provider unigram
+healthcare_access,health care professional,trigram,Workforce access signal
+neighborhood_environment,air quality,bigram,source: paper
+neighborhood_environment,built environment,bigram,source: paper; HP2030
+neighborhood_environment,green space,bigram,source: HP2030
+neighborhood_environment,housing,unigram,source: paper; HP2030
+neighborhood_environment,neighborhood,unigram,source: paper
+neighborhood_environment,physical environments,bigram,source: paper
+neighborhood_environment,pollution,unigram,source: paper
+neighborhood_environment,transportation,unigram,source: HP2030
+neighborhood_environment,unsafe physical environments,trigram,source: paper
+neighborhood_environment,violence,unigram,source: paper; HP2030
+social_community,community context,bigram,source: paper
+social_community,incarceration,unigram,source: HP2030
+social_community,isolation,unigram,source: HP2030
+social_community,lived experiences,bigram,source: paper
+social_community,social disadvantage,bigram,source: paper
+social_community,social support,bigram,source: paper; HP2030
+social_community,community well-being,bigram,source: paper
+social_community,substance abuse,bigram,Social condition with structural causes; distinct from clinical substance treatment language
+social_community,substance use,bigram,As a social condition (substance use disorder)
+social_community,drug court,bigram,source: sample bills
+social_community,mental health court,trigram,source: sample bills
+social_community,housing crisis,bigram,source: sample bills
+social_community,peer support,bigram,source: sample bills
+social_community,community safety,bigram,source: sample bills
+social_community,suicide prevention,bigram,Explicitly upstream-oriented framing; structural risk factors
+social_community,violence prevention,bigram,source: sample bills
+social_community,family services,bigram,Social support infrastructure; family-level structural conditions
+social_community,community mental health,trigram,Place-based community care framing
+social_community,law enforcement agency,trigram,Extends law enforcement bigram with more specificity
+social_community,law enforcement officer,trigram,Extends law enforcement bigram with more specificity
+social_community,addiction services provider,trigram,Substance use service delivery — structural social framing
+discrimination_equity,discrimination,unigram,source: paper; HP2030
+discrimination_equity,disparity,unigram,source: paper; HP2030
+discrimination_equity,equity,unigram,source: paper; HP2030
+discrimination_equity,health disparities,bigram,source: paper
+discrimination_equity,health equity,bigram,source: paper
+discrimination_equity,health inequities,bigram,source: paper
+discrimination_equity,human rights,bigram,source: paper
+discrimination_equity,inequities,unigram,source: paper
+discrimination_equity,marginalized populations,bigram,source: paper
+discrimination_equity,racism,unigram,source: paper; HP2030
+discrimination_equity,social exclusion,bigram,source: paper
+discrimination_equity,stigma,unigram,source: paper; HP2030
+discrimination_equity,structural inequities,bigram,source: paper
+discrimination_equity,structural racism,bigram,source: paper
+discrimination_equity,systemic barriers,bigram,source: paper
+discrimination_equity,systemic discrimination,bigram,source: paper
+discrimination_equity,sickle cell,bigram,Signals racial equity framing in healthcare access
+discrimination_equity,medical cannabis,bigram,Drug policy with documented racial equity dimensions

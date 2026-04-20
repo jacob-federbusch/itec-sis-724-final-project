@@ -1,0 +1,85 @@
+topic,topic_label,domain,rho,n
+1,Involuntary & Inpatient Treatment,discrimination_equity,-0.1852133886899657,3169
+1,Involuntary & Inpatient Treatment,economic_stability,-0.29395586856668854,3169
+1,Involuntary & Inpatient Treatment,education_access,-0.29530205597365644,3169
+1,Involuntary & Inpatient Treatment,healthcare_access,-0.18096887076484747,3169
+1,Involuntary & Inpatient Treatment,neighborhood_environment,-0.15172780946384937,3169
+1,Involuntary & Inpatient Treatment,social_community,-0.21071478497337795,3169
+2,Drug Crime & Penalties,discrimination_equity,-0.32230667003462227,3169
+2,Drug Crime & Penalties,economic_stability,-0.42106901248107653,3169
+2,Drug Crime & Penalties,education_access,-0.40608877182752984,3169
+2,Drug Crime & Penalties,healthcare_access,-0.4129444934239448,3169
+2,Drug Crime & Penalties,neighborhood_environment,-0.40599349828066417,3169
+2,Drug Crime & Penalties,social_community,-0.37241587446669616,3169
+3,Maternal & Prenatal Health,discrimination_equity,-0.21987884872297064,3169
+3,Maternal & Prenatal Health,economic_stability,-0.3266316083732511,3169
+3,Maternal & Prenatal Health,education_access,-0.31845383890058115,3169
+3,Maternal & Prenatal Health,healthcare_access,-0.29246261919690403,3169
+3,Maternal & Prenatal Health,neighborhood_environment,-0.3297205411528167,3169
+3,Maternal & Prenatal Health,social_community,-0.3215812510203611,3169
+4,General Regulatory Procedures,discrimination_equity,-0.2518977171615248,3169
+4,General Regulatory Procedures,economic_stability,-0.3817013849527994,3169
+4,General Regulatory Procedures,education_access,-0.36570602147842124,3169
+4,General Regulatory Procedures,healthcare_access,-0.422450041728122,3169
+4,General Regulatory Procedures,neighborhood_environment,-0.33801713369742464,3169
+4,General Regulatory Procedures,social_community,-0.39309011151093265,3169
+8,Healthcare Facilities & Licensing,discrimination_equity,-0.2824097952592177,3169
+8,Healthcare Facilities & Licensing,economic_stability,-0.43031887275670117,3169
+8,Healthcare Facilities & Licensing,education_access,-0.4156396035386306,3169
+8,Healthcare Facilities & Licensing,healthcare_access,-0.4086265928432394,3169
+8,Healthcare Facilities & Licensing,neighborhood_environment,-0.42087956936711934,3169
+8,Healthcare Facilities & Licensing,social_community,-0.38245974995534954,3169
+9,Advisory Bodies & Task Forces,discrimination_equity,-0.001957335778375645,3169
+9,Advisory Bodies & Task Forces,economic_stability,-0.07215828701735967,3169
+9,Advisory Bodies & Task Forces,education_access,-0.1850385895200403,3169
+9,Advisory Bodies & Task Forces,healthcare_access,-0.08775735597909762,3169
+9,Advisory Bodies & Task Forces,neighborhood_environment,-0.11571496033353428,3169
+9,Advisory Bodies & Task Forces,social_community,-0.08824642738079813,3169
+10,Workforce Licensing,discrimination_equity,-0.24016557199105623,3169
+10,Workforce Licensing,economic_stability,-0.3224123664503534,3169
+10,Workforce Licensing,education_access,-0.2058413083165956,3169
+10,Workforce Licensing,healthcare_access,-0.3172824862090142,3169
+10,Workforce Licensing,neighborhood_environment,-0.33908070387315303,3169
+10,Workforce Licensing,social_community,-0.3792854397512097,3169
+11,Policy Equity & Conditions,discrimination_equity,-0.13633248275115442,3169
+11,Policy Equity & Conditions,economic_stability,-0.33099154917821866,3169
+11,Policy Equity & Conditions,education_access,-0.31417122695505023,3169
+11,Policy Equity & Conditions,healthcare_access,-0.29958519362880787,3169
+11,Policy Equity & Conditions,neighborhood_environment,-0.3838730257796344,3169
+11,Policy Equity & Conditions,social_community,-0.30758558805753894,3169
+12,Budget & Fiscal Provisions,discrimination_equity,-0.29059381018919556,3169
+12,Budget & Fiscal Provisions,economic_stability,-0.4025183933124915,3169
+12,Budget & Fiscal Provisions,education_access,-0.3985696835342826,3169
+12,Budget & Fiscal Provisions,healthcare_access,-0.4211808570699263,3169
+12,Budget & Fiscal Provisions,neighborhood_environment,-0.36702305044578976,3169
+12,Budget & Fiscal Provisions,social_community,-0.3865943192508438,3169
+13,Licensing & Privacy Records,discrimination_equity,-0.23887148488134435,3169
+13,Licensing & Privacy Records,economic_stability,-0.318612384966908,3169
+13,Licensing & Privacy Records,education_access,-0.31489451739414664,3169
+13,Licensing & Privacy Records,healthcare_access,-0.31995518305036286,3169
+13,Licensing & Privacy Records,neighborhood_environment,-0.3290291070894613,3169
+13,Licensing & Privacy Records,social_community,-0.3252517189573607,3169
+15,Corporate & Regulatory,discrimination_equity,-0.26672680757367345,3169
+15,Corporate & Regulatory,economic_stability,-0.4210259513835823,3169
+15,Corporate & Regulatory,education_access,-0.40835523853366884,3169
+15,Corporate & Regulatory,healthcare_access,-0.42420872153957623,3169
+15,Corporate & Regulatory,neighborhood_environment,-0.40202312344242686,3169
+15,Corporate & Regulatory,social_community,-0.3812991399726832,3169
+16,Insurance & Medicaid Coverage,discrimination_equity,-0.18409193624406758,3169
+16,Insurance & Medicaid Coverage,economic_stability,-0.1878383985571972,3169
+16,Insurance & Medicaid Coverage,education_access,-0.314441064900853,3169
+16,Insurance & Medicaid Coverage,healthcare_access,-0.035617971919377295,3169
+16,Insurance & Medicaid Coverage,neighborhood_environment,-0.33910112304670187,3169
+16,Insurance & Medicaid Coverage,social_community,-0.23991853024222956,3169
+18,Education & Community,discrimination_equity,-0.027118496489604692,3169
+18,Education & Community,economic_stability,-0.16587975612943137,3169
+18,Education & Community,education_access,0.012308223044819934,3169
+18,Education & Community,healthcare_access,-0.17135286782900438,3169
+18,Education & Community,neighborhood_environment,-0.15976952811014336,3169
+18,Education & Community,social_community,-0.07292512476713042,3169
+19,Criminal Justice,discrimination_equity,-0.257427119736751,3169
+19,Criminal Justice,economic_stability,-0.24006475125209092,3169
+19,Criminal Justice,education_access,-0.2978508437381342,3169
+19,Criminal Justice,healthcare_access,-0.36266019782790204,3169
+19,Criminal Justice,neighborhood_environment,-0.13946514046650565,3169
+19,Criminal Justice,social_community,-0.2166350732739215,3169

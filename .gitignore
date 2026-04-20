@@ -1,0 +1,33 @@
+﻿# Raw bill text and large data files
+billtxt/
+rawbilltext/
+*.rds
+*.RData
+
+# R and Python environment files
+.Rhistory
+.RData
+.Rproj.user/
+__pycache__/
+*.pyc
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Raw zip and JSON data (too large / filenames too long)
+raw_zips/
+unzipped_json/
+bill_txt/
+raw_billtext/
+
+# Metadata and scratch files
+metadata.csv
+metadata_mental_health.csv
+retrieval_issues.csv
+RandomJunkNotes.txt
+working_checklist.qmd
+project_code_template_test.qmd
+project_notes.qmd
+original_methodology_work.qmd
