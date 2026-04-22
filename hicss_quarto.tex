@@ -2,10 +2,11 @@
 
 % Page geometry
 \usepackage[
-  top=3.49cm,
+  paper=letterpaper,
+  top=2.54cm,
   bottom=2.86cm,
-  left=1.905cm,
-  right=1.905cm,
+  left=2.54cm,
+  right=2.54cm,
   columnsep=0.81cm
 ]{geometry}
 
@@ -20,6 +21,9 @@
 \usepackage{url}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{enumitem}
+
+\setlist{noitemsep, topsep=2pt}
 
 % Pandoc image handling
 \makeatletter
@@ -81,7 +85,7 @@
 
 \titleformat{\subsection}
   {\fontsize{11}{13}\bfseries\selectfont}
-  {\thesubsection}
+  {\thesubsection.}
   {0.5em}
   {}
 \titlespacing*{\subsection}{0pt}{12pt}{12pt}
@@ -95,7 +99,14 @@
 \titlespacing*{\subsubsection}{0pt}{0pt}{0.5em}
 
 % Captions
-\usepackage[font={small,sf},labelfont=bf]{caption}
+\usepackage{caption}
+\DeclareCaptionFont{ninept}{\fontsize{9}{11}\selectfont}
+\captionsetup{
+  font={ninept,bf,sf},
+  labelfont={ninept,bf,sf},
+  labelsep=period,
+  justification=centering
+}
 
 % Hyperlinks
 \usepackage{hyperref}
@@ -126,10 +137,10 @@ $endif$
 \twocolumn[
 \begin{@twocolumnfalse}
 \begin{center}
-\vspace*{0.3cm}
+\vspace*{0.95cm}
 $if(title)$
 {\fontsize{14}{16}\bfseries\selectfont $title$}
-\par\vspace{12pt}
+\par\vspace{24pt}
 $endif$
 $if(author)$
 {\fontsize{10}{12}\selectfont $author$}\par
@@ -161,25 +172,9 @@ $if(keywords)$
 \par\vspace{6pt}
 $endif$
 
+
+
 % Main body content from Quarto
 $body$
-
-% Bibliography - HICSS: 9pt Times, single-spaced
-% Bibliography - HICSS: 9pt Times (set in CSLReferences environment)
-$if(csl-refs)$
-$csl-refs$
-$endif$
-
-\end{document}
-
-% CSL bibliography (Quarto/Pandoc default)
-$if(csl-refs)$
-\setlength{\parindent}{0cm}
-\setlength{\leftskip}{0.5cm}
-\setlength{\parskip}{0.5em}
-{\fontsize{9}{11}\selectfont
-$csl-refs$
-}
-$endif$
 
 \end{document}

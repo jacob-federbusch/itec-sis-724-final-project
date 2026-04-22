@@ -1,0 +1,1090 @@
+\documentclass[10pt,twocolumn]{article}
+
+% Page geometry
+\usepackage[
+  paper=letterpaper,
+  top=2.54cm,
+  bottom=2.86cm,
+  left=2.54cm,
+  right=2.54cm,
+  columnsep=0.81cm
+]{geometry}
+
+% Fonts
+\usepackage{times}
+\usepackage{mathptmx}
+\usepackage{helvet}
+\usepackage[T1]{fontenc}
+
+% Packages
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{enumitem}
+
+\setlist{noitemsep, topsep=2pt}
+
+% Pandoc image handling
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+
+\providecommand{\pandocbounded}[1]{#1}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% CSL References environment definition - HICSS: 9pt Times
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newenvironment{CSLReferences}[2] % #1 hanging-indent, #2 entry spacing
+ {% Don't indent paragraphs
+  \fontsize{9}{11}\selectfont  % HICSS requirement: 9pt for references
+  \setlength{\parindent}{0pt}
+  % Turn on hanging indent if param 1 is 1
+  \ifodd #1
+   \let\oldpar\par
+   \def\par{\hangindent=\cslhangindent\oldpar}
+  \fi
+  % Set entry spacing
+  \setlength{\parskip}{#2\baselineskip}
+  % Redefine \bibitem to just ignore its arguments and start a new paragraph
+  \renewcommand{\bibitem}[2][]{\par}
+ }%
+ {}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{#1\hfill\break}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{#1}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{#1}\break}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+
+% No page numbers
+\pagestyle{empty}
+
+% Paragraph formatting
+\setlength{\parindent}{0.635cm}
+\setlength{\parskip}{0pt}
+\usepackage{indentfirst}
+
+% Footnotes - HICSS: 8pt Times
+\usepackage[bottom]{footmisc}
+\renewcommand{\footnotesize}{\fontsize{8}{10}\selectfont}
+
+% Section headings
+\usepackage{titlesec}
+
+\titleformat{\section}
+  {\fontsize{12}{14}\bfseries\selectfont}
+  {\thesection.}
+  {0.5em}
+  {}
+\titlespacing*{\section}{0pt}{12pt}{12pt}
+
+\titleformat{\subsection}
+  {\fontsize{11}{13}\bfseries\selectfont}
+  {\thesubsection.}
+  {0.5em}
+  {}
+\titlespacing*{\subsection}{0pt}{12pt}{12pt}
+
+\titleformat{\subsubsection}[runin]
+  {\fontsize{10}{12}\bfseries\selectfont}
+  {\thesubsubsection}
+  {0.5em}
+  {}
+  [.]
+\titlespacing*{\subsubsection}{0pt}{0pt}{0.5em}
+
+% Captions
+\usepackage{caption}
+\DeclareCaptionFont{ninept}{\fontsize{9}{11}\selectfont}
+\captionsetup{
+  font={ninept,bf,sf},
+  labelfont={ninept,bf,sf},
+  labelsep=period,
+  justification=centering
+}
+
+% Hyperlinks
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=black
+}
+
+% URLs in Times Roman (not typewriter font) - HICSS requirement
+\urlstyle{same}
+
+% Code formatting
+\usepackage{fancyvrb}
+\usepackage{color}
+
+% Tables
+\usepackage{longtable,booktabs,array}
+
+
+\begin{document}
+
+% Title page spanning both columns
+\twocolumn[
+\begin{@twocolumnfalse}
+\begin{center}
+\vspace*{0.95cm}
+{\fontsize{14}{16}\bfseries\selectfont Mapping Legislative Attention to
+the Social Determinants of Mental Health: A Text Analysis of State
+Bills, 2021-2024}
+\par\vspace{24pt}
+{\fontsize{10}{12}\selectfont Jacob Federbusch}\par
+{\fontsize{10}{12}\selectfont American University}\par
+{\fontsize{10}{12}\selectfont jf2728a@american.edu}\par
+\vspace{24pt}
+\end{center}
+\end{@twocolumnfalse}
+]
+
+\begin{center}
+{\fontsize{12}{14}\bfseries Abstract}
+\end{center}
+\vspace{6pt}
+{\fontsize{10}{12}\itshape\selectfont
+\parindent=0.635cm
+\hspace{0.635cm}This study examines how state mental health legislation
+addresses the social determinants of mental health across ten U.S.
+states between 2021 and 2024. Using a LegiScan-derived corpus of 3,169
+introduced bills, I combine a custom domain dictionary with token- and
+phrase-level frequency, named entity recognition, and Latent Dirichlet
+Allocation topic modeling to map domain-specific language across bills,
+states, session years, and party-control contexts. I find that all six
+social determinant domains are referenced in the corpus, but with uneven
+frequency and distribution. Bills with high social determinant content
+disproportionately reference public payers and health and human-services
+agencies, and topic models suggest that upstream concerns are often
+channeled through education, advisory bodies, and justice-system themes
+rather than narrowly clinical topics. These patterns highlight uneven
+but measurable legislative attention to upstream determinants in state
+mental health policy.}
+\par\vspace{12pt}
+
+\noindent{\fontsize{10}{12}\bfseries Keywords:} social determinants of
+mental health, state legislation, text-as-data, topic modeling, named
+entity recognition
+\par\vspace{6pt}
+
+
+
+% Main body content from Quarto
+\section{Introduction}\label{introduction}
+
+The social determinants of health (SDOH) represent the fundamental
+environmental, social, and economic conditions in which individuals are
+born, grow, live, work, and age that shape their overall well-being and
+health outcomes (Kirby \& Slone, 2022; {``Social {Determinants} of
+{Health},''} n.d.). While these determinants influence both physical and
+psychological health, the core domains particularly relevant to mental
+health and this study include economic stability, education access and
+quality, health care access and quality, neighborhood and built
+environment, social and community context, and discrimination, equity,
+and rights (Kirby \& Slone, 2022; {``Social {Determinants} of
+{Health},''} n.d.). Crucially, experiences of disadvantage follow a
+distinct social gradient, meaning that individuals occupying lower
+social positions face compounding mental health risks that accumulate
+over the life course through persistent exposure to chronic stress and
+structural inequities (Alegría et al., 2018).
+
+These foundational factors function as upstream drivers, acting as the
+fundamental causes that shape downstream living conditions and immediate
+health risks (Alegría et al., 2018). Consequently, effectively
+addressing mental health requires a critical shift away from focusing
+exclusively on individual pathology and biomedical models of disease,
+moving instead toward an examination of the systemic inequities and
+structural conditions that generate psychological distress (Kirby \&
+Slone, 2022). While individual-level clinical interventions are
+important, public policy serves as an important mechanism for shaping
+these overarching environmental and socioeconomic conditions (Gostin et
+al., 2019; Kirby \& Slone, 2022). By establishing rules, structuring
+societal systems, and directing the equitable distribution of resources,
+the law can directly mediate these upstream social determinants,
+providing an important tool to restructure societal frameworks and
+facilitate a healthier, more equitable society (Gostin et al., 2019;
+Kirby \& Slone, 2022).
+
+Despite widespread recognition of the critical importance of the SDOH,
+existing scholarship does not systematically map how state mental health
+bills address these specific domains across varying legislative and
+political contexts. This gap persists largely because the current
+literature is dominated by qualitative examples and narrow case studies
+that, while providing deep insights, cannot easily capture broad
+structural trends. These legal texts create a methodological challenge
+because they consist of large volumes of unstructured language that are
+difficult to analyze systematically through manual review (Grimmer \&
+Stewart, 2013).
+
+By leveraging text-as-data computational techniques, researchers can
+extract meaningful patterns from large-scale legislative corpora that
+were previously difficult to process systematically at scale (Grimmer \&
+Stewart, 2013). In this study, legislative attention refers to the
+extent and pattern of social determinant language observed in state
+mental health bill texts. To address the current gap in the literature,
+this study maps legislative attention to the social determinants of
+mental health in a LegiScan-derived, keyword-filtered corpus of
+introduced state mental health bills from ten states between 2021 and
+2024, comparing patterns across domains, states, session years, and
+party control.
+
+\section{Literature review}\label{literature-review}
+
+Mental health is shaped not only by clinical care and individual risk
+factors, but also by upstream social, economic, and environmental
+conditions. A substantial body of evidence demonstrates that experiences
+of socioeconomic disadvantage--including poverty, unemployment, housing
+instability, social exclusion, and unsafe physical environments--are
+consistently linked to worse mental health outcomes and higher rates of
+psychiatric illness (Kirby \& Slone, 2022). Because these foundational
+determinants influence an individual's health and well-being through
+diverse, interacting pathways across the lifespan, utilizing a
+domain-based lens that categorizes these factors into distinct areas
+like economic stability, neighborhood and built environment, and social
+and community context provides a highly useful framework for
+understanding and addressing them ({``Social {Determinants} of
+{Health},''} n.d.).
+
+A domain-based framework is useful because the social-determinants
+literature groups upstream influences into recurring categories rather
+than treating them as one undifferentiated factor. For instance, the
+Healthy People 2030 initiative organizes these conditions into five
+distinct domains: Economic Stability, Education Access and Quality,
+Health Care Access and Quality, Neighborhood and Built Environment, and
+Social and Community Context ({``Social {Determinants} of {Health},''}
+n.d.). These broad categories naturally map onto themes already visible
+in the mental health literature, where researchers consistently link
+psychiatric outcomes to specific upstream factors like income and job
+insecurity, poor education, limited care access, housing instability,
+and lack of social support or exposure to violence (Kirby \& Slone,
+2022). Furthermore, systemic discrimination, health equity, and human
+rights deserve explicit attention in mental-health-focused studies
+because experiences of social exclusion, structural racism, and stigma
+act as fundamental causes of psychological distress that compound
+vulnerabilities across all other domains (Kirby \& Slone, 2022; Whitman
+et al., 2022).
+
+If social determinants shape mental health, then law and public policy
+are important mechanisms through which governments structure those
+conditions. Through statutory and regulatory frameworks, the law
+directly affects the operations of public and private institutions,
+dictates the equitable or inequitable distribution of resources, and
+shapes both eligibility for and the delivery of health services (Gostin
+et al., 2019). Because of its pervasive influence, policy possesses a
+dual potential: it can either actively reduce harm by building strong
+health systems, or it can reproduce social exclusion and entrench stigma
+(Gostin et al., 2019). Poorly designed or punitive laws can
+institutionalize inequality and create systemic barriers that discourage
+marginalized populations from seeking treatment (Gostin et al., 2019).
+Consequently, legislative language matters immensely because policy
+texts do more than merely record objective administrative actions; the
+specific wording used actively frames societal problems, conceptualizes
+target populations, and signals governmental priorities and approaches
+to intervention (Popa, 2025).
+
+Existing state-level mental health scholarship suggests that attention
+to social determinants is real but uneven across domains and
+jurisdictions. As Rotter and colleagues demonstrate, state mental health
+authorities display broad recognition and concern regarding the
+relevance of social determinants, yet this awareness suffers from a lack
+of standardized approaches and limited intentional implementation of
+specific screening tools or intervention mandates (Rotter et al., 2022).
+Moreover, programmatic focus is highly skewed; some
+determinants--especially housing instability and health care access and
+quality--receive significantly more attention and targeted action than
+other crucial factors such as education, food insecurity, and
+discrimination, equity, and rights (Rotter et al., 2022). Consequently,
+this variation across states is substantively meaningful and not merely
+a data convenience, as these diverging regional priorities create
+profound inequities and dictate fundamentally different lived
+experiences within the mental health system depending on where an
+individual resides (Nelson et al., 2022).
+
+Although prior scholarship shows that social determinants matter for
+mental health and that law helps structure those conditions, less is
+known about how state mental health bills systematically express these
+concerns across domains and contexts. While the existing literature
+thoroughly explains why SDOH matter for overall well-being and why
+public policy is a crucial mechanism for addressing structural health
+inequities (Kirby \& Slone, 2022), current research does not fully map
+domain-specific language across a comprehensive, multi-stage bill corpus
+(Nelson et al., 2022). Furthermore, variation across states, session
+years, and party control--such as shifts in interparty competition,
+electoral turnover, and differing regional governance--are highly
+plausible and important factors in shaping public policy (Takeda, 1987),
+but they are still underexamined in this specific legislative-text
+context (Popa, 2025). To address this critical gap, this study
+contributes to the field by mapping social determinant language in state
+mental health bills across domains, states, session years, and party
+control.
+
+\section{Conceptual framework}\label{conceptual-framework}
+
+Because law can greatly affect the social determinants of mental health,
+state policy is an important site for understanding how governments
+respond to those conditions. This project treats state mental health
+bills as institutional signals of which social determinants receive
+legislative attention. Bill text serves as the observable link between
+scholarship on social determinants and measurable patterns of
+legislative attention. The analysis compares these patterns across
+states, session years, and party control, with the goal of mapping
+policy attention rather than estimating downstream mental health
+outcomes.
+
+\begin{figure}
+
+\centering{
+
+\includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{ConceptualFramework.png}
+
+}
+
+\caption{\label{fig-framework}This framework depicts how social
+determinants of mental health are translated into observable patterns of
+legislative attention through state mental health bills, with
+text-derived measures used to compare variation across states, session
+years, and party control.}
+
+\end{figure}%
+
+\section{Research questions}\label{research-questions}
+
+RQ1. How frequently do state mental health bills mention specific social
+determinant domains, and which domains are most prominent?
+
+\begin{itemize}
+\tightlist
+\item
+  RQ1a. Which domain terms are most frequent by TF?
+\item
+  RQ1b. Which terms are most distinctive by TF-IDF?
+\item
+  RQ1c. Which bigrams and trigrams recur most often within each domain?
+\end{itemize}
+
+RQ2. How does the use of social determinant domain language vary by
+state, session year, and party control?
+
+\begin{itemize}
+\tightlist
+\item
+  RQ2a. Which states use the highest share of neighborhood and built
+  environment or discrimination, equity, and rights language?
+\item
+  RQ2b. Does domain language increase or decrease over time?
+\item
+  RQ2c. Are certain domains more common under Democratic, Republican, or
+  divided control?
+\end{itemize}
+
+RQ3. What terms, phrases, and named entities distinguish bills with high
+versus low levels of social determinant language?
+
+\begin{itemize}
+\tightlist
+\item
+  RQ3a. Which words and phrases are most distinctive in high-domain
+  bills?
+\item
+  RQ3b. Which organizations, agencies, programs, or place names appear
+  most often in high-domain bills?
+\item
+  RQ3c. Do high-domain bills reference schools, housing authorities,
+  Medicaid, or local governments more often than low-domain bills?
+\end{itemize}
+
+RQ4. What latent themes emerge in mental health bills, and how do those
+themes relate to concrete social determinant domains?
+
+\begin{itemize}
+\tightlist
+\item
+  RQ4a. Which topics are most common in the corpus?
+\item
+  RQ4b. Which topics co-occur with high neighborhood and built
+  environment, education access and quality, or discrimination, equity,
+  and rights scores?
+\item
+  RQ4c. Do some states or session years show stronger topic-domain
+  combinations than others?
+\end{itemize}
+
+\section{Methodology}\label{methodology}
+
+\subsection{Data collection and corpus
+construction}\label{data-collection-and-corpus-construction}
+
+This study analyzes introduced state legislative bills from ten U.S.
+states (New York, Illinois, Texas, Florida, California, Pennsylvania,
+Washington, Georgia, Wisconsin, and Ohio) across regular sessions from
+2021--2024. Bills and metadata were drawn from LegiScan's public
+historical API JSON archives, and the corpus was restricted to
+introduced versions to ensure comparability at a common legislative
+stage. Mental-health-relevant bills were identified by applying a fixed
+keyword screen to bill titles and descriptions, reducing the candidate
+pool to 3,395 bills. For these bills, full text was retrieved using the
+LegiScan API getBillText endpoint, converted to UTF-8 plain text using
+format-appropriate Python scripts, and validated through automated
+checks and manual spot-reviews. After excluding special sessions and
+non-bill records, the final analytic corpus consists of 3,169 introduced
+bills paired with metadata.
+
+\subsection{Data preparation}\label{data-preparation}
+
+Two contextual variables---session year and party control---were
+prepared for subgroup comparisons in RQ2 and descriptive stratification
+throughout the analysis. Session year was coded as the start year of the
+regular legislative session in which the bill was introduced (2021 or
+2023), and party control at session opening was classified as Democratic
+trifecta, Republican trifecta, or divided government using National
+Conference of State Legislatures and Ballotpedia data.
+
+From the master corpus table, the analysis constructs a set of derived
+tables used across the research questions: (1) a token table for
+unigram-based frequency and TF--IDF analysis, (2) an n-gram table for
+bigram and trigram analysis, (3) a named-entity table for organization
+and place extraction, (4) a domain dictionary table for SDOH
+measurement, and (5) a topic table of document--topic proportions for
+RQ4. All text processing was implemented in R using the tidytext
+workflow for tokenization and document-term representations, with spacyr
+used for named entity recognition (NER) via spaCy's English model.
+
+Preprocessing decisions were tailored to the measurement task. For
+dictionary scoring, n-grams, and NER, the analysis uses raw, unstemmed
+tokens to preserve interpretability and to avoid breaking exact
+dictionary phrase matches and entity boundaries. For TF--IDF and topic
+modeling, the analysis uses a more normalized representation (lemmatized
+tokens) to reduce sparsity of word variants and to better capture
+recurring themes across documents.
+
+Tokenization followed a conservative cleaning strategy designed for
+legislative text: standard stopwords (tidytext's stop word lexicon) were
+removed, pure numbers and very short tokens were excluded, and a custom
+legislative stopword list was applied iteratively to remove
+high-frequency procedural boilerplate (e.g., ``section,'' ``chapter,''
+``subsection,'' ``shall'') that is ubiquitous in bills but not
+substantively informative. For phrase analysis, bigrams and trigrams
+were constructed and filtered to exclude any n-grams containing
+stopwords or numeric tokens; a small additional list of formatting
+artifacts (e.g., markup language produced during bill drafting or PDF
+extraction) was also removed to prevent document-format conventions from
+dominating substantive phrase patterns.
+
+\subsection{Dictionary construction and bill-level
+measures}\label{dictionary-construction-and-bill-level-measures}
+
+To operationalize ``legislative attention'' to upstream determinants,
+this study uses a custom domain dictionary that maps bill language to
+six social-determinant domains relevant to mental health: Economic
+Stability; Education Access and Quality; Health Care Access and Quality;
+Neighborhood and Built Environment; Social and Community Context; and
+Discrimination, Equity, and Rights. Dictionary methods are appropriate
+for this purpose because they provide a transparent, deductive
+measurement strategy in which concept definitions are specified
+beforehand and then applied consistently across a large corpus (Grimmer
+\& Stewart, 2013).
+
+Dictionary development combined (1) deductive term selection from the
+social-determinants literature and the Healthy People 2030 SDOH
+framework and (2) an inductive validation pass using a 30-bill sample
+from the corpus to identify additional domain-relevant language and to
+remove ambiguous or overly generic terms. Candidate terms were retained
+only if they met two substantive criteria: (a) the term clearly referred
+to a social condition, structural factor, or population characteristic
+(rather than a clinical outcome or purely procedural legislative
+language), and (b) its presence plausibly distinguished a bill as
+addressing an upstream determinant rather than generic mental-health
+service delivery. As a result, several intuitively related but overly
+ubiquitous terms (e.g., broad healthcare terms that appear in nearly all
+mental-health bills) were avoided to reduce false positives and preserve
+domain specificity.
+
+Dictionary matching was performed on raw, unstemmed tokens to preserve
+interpretability and to avoid breaking exact phrase matches (e.g.,
+``safety net,'' ``structural racism''). Unigram matching was performed
+against the token table, while bigram and trigram matching was performed
+against the n-gram tables.
+
+Dictionary matches were aggregated into three bill-level measures that
+serve as inputs to the research questions: (1) Domain indicators
+(binary): For each domain, a bill was coded as mentioning that domain if
+it contained at least one matching dictionary term or phrase. These
+indicators are the basis for subgroup comparisons in RQ2, where results
+are reported as shares of bills within each subgroup (state, session
+year, or party-control category) rather than raw counts, to ensure
+comparability across groups of unequal size. (2) Domain scores (counts):
+For each domain, a bill received a domain score equal to the count of
+unique dictionary terms/phrases from that domain observed in the bill
+text. Using unique-term counts (rather than total occurrences) reduces
+the influence of repetitive drafting language and better reflects the
+breadth of domain-relevant content in a bill. (3) Overall ``domain
+intensity'' score: For analyses that require a single summary measure of
+upstream focus, each bill received a total domain score equal to the sum
+of unique matched dictionary terms across all domains.
+
+Importantly, domain categorization was non-exclusive: a single bill can
+match multiple domains, consistent with the fact that comprehensive
+mental health legislation may address several upstream determinants
+simultaneously.
+
+\subsection{RQ1: Domain prominence and recurring
+expressions}\label{rq1-domain-prominence-and-recurring-expressions}
+
+To address RQ1, the analysis combines dictionary filtering with unigram
+and n-gram frequency measures. First, dictionary terms and phrases were
+linked to the token and n-gram tables (unigrams via the token table;
+bigrams/trigrams via the n-gram table). For RQ1a, domain-term prominence
+is summarized using term frequency (TF), operationalized as the total
+count of each dictionary term across the corpus (i.e., summing token
+counts across bills). For RQ1b, term distinctiveness is summarized with
+TF--IDF, treating each bill as a separate document so that terms
+frequent in a small subset of bills are up-weighted relative to terms
+that occur broadly across the corpus. For RQ1c, recurring phrases are
+measured using bigrams and trigrams constructed from bill text and then
+summarized as the most frequent domain-matched n-grams within each
+domain.
+
+\subsection{RQ2: Variation by state, session year, and party
+control}\label{rq2-variation-by-state-session-year-and-party-control}
+
+To address RQ2, the primary outcome is the bill-level domain indicator
+from the dictionary scoring stage. Comparisons are reported as shares
+(proportions) within each subgroup---e.g., the share of bills in a given
+state-session or party-control category that mention a domain---rather
+than raw counts, to ensure comparability across groups of unequal size.
+
+\subsection{RQ3: High- vs.~low-domain bills and named
+entities}\label{rq3-high--vs.-low-domain-bills-and-named-entities}
+
+To address RQ3, bills were first ranked by the overall domain intensity
+score. Bills above the 75th percentile of the score distribution were
+defined as high-domain, and bills below the 25th percentile were defined
+as low-domain. Distinctive language was then identified using three
+complementary approaches. First, unigrams and n-grams were compared
+across the high- vs.~low-domain subsets using class-based TF--IDF,
+treating the high-domain subset as one aggregated document and the
+low-domain subset as another, to identify terms distinctive to
+high-domain bills relative to low-domain bills. Second, recurrent
+bigrams and trigrams were compared using the same contrastive logic to
+identify short policy-relevant expressions that separate the two groups.
+Third, NER was used to extract organizations and geopolitical entities
+that function as concrete institutional or place-based signals in
+high-domain bills (e.g., agencies, programs, state departments). NER was
+executed with spacyr/spaCy's en\_core\_web\_lg English model and then
+cleaned through iterative inspection of the most frequent entities;
+generic procedural artifacts were removed using a custom entity
+stoplist. The spaCy LAW entity type was excluded because it
+predominantly captured internal legislative cross-references and
+formatting artifacts rather than substantively meaningful named laws,
+yielding insufficient signal for comparison.
+
+\subsection{RQ4: Topic modeling and domain
+co-variation}\label{rq4-topic-modeling-and-domain-co-variation}
+
+To address RQ4, the analysis fit an LDA topic model to the corpus using
+a document-term matrix derived from the cleaned token table. Because
+topic models are sensitive to sparsity and high dimensionality, the
+topic-model input uses a more normalized representation (lemmatized
+tokens) than the dictionary and n-gram components. The number of topics
+was selected as k=20 based on (1) perplexity comparisons across
+candidate values (k \(\in\) \{10,15,20,25,30\}) and (2) substantive
+inspection of the top terms per topic to ensure interpretability. The
+fitted model produces document--topic proportions (\(\gamma\)) for each
+bill, which were then joined back to bill metadata and domain scores to
+examine which topics are most prevalent overall and how topic prevalence
+co-varies with domain indicators/scores across states and session years.
+Six topics were identified as procedural/formatting artifacts
+(state-specific header language, citation conventions, and extraction
+remnants) and were excluded from substantive RQ4 comparisons.
+
+\section{Findings}\label{findings}
+
+\subsection{RQ1}\label{rq1}
+
+The most frequent dictionary-filtered domain word among introduced bills
+is education (tf = 1,197), followed by employment (535), medicaid (420),
+housing (336), hospitals (302), transportation (290), income (277), and
+violence (276). All of these terms appear in the education access,
+economic stability, healthcare access, and neighborhood-environment
+domains. By contrast, terms from the discrimination-equity domain are
+less frequent, with equity (tf = 127), stigma (tf = 115), and
+discrimination (tf = 65) as the domain's most frequent terms, while
+social-community words also have only modest frequency with
+incarceration (tf = 136) and isolation (tf = 54).
+
+\begin{figure}
+
+\centering{
+
+\includegraphics[width=0.65\linewidth,height=\textheight,keepaspectratio]{output/figures/rq1a_tf.png}
+
+}
+
+\caption{\label{fig-rq1a-tf}Top domain terms by frequency (RQ1a).}
+
+\end{figure}%
+
+TF-IDF scores highlight a somewhat different pattern: within healthcare
+access, telehealth (mean TF-IDF = 1.04) and uninsured (0.66) are
+especially distinctive, and in neighborhood-environment, neighborhood
+(1.25), pollution (1.08), and violence (0.85) stand out despite not
+being the most frequent raw tokens. Discrimination-equity terms such as
+stigma (0.99), disparity (0.86), and equity (0.72), along with
+social-community terms like isolation (1.39) and incarceration (1.28),
+also emerge as highly distinctive to the subset of bills that reference
+them.
+
+\begin{figure}
+
+\centering{
+
+\includegraphics[width=0.65\linewidth,height=\textheight,keepaspectratio]{output/figures/rq1b_tfidf.png}
+
+}
+
+\caption{\label{fig-rq1b-tfidf}Top domain terms by distinctiveness
+(TF-IDF, RQ1b).}
+
+\end{figure}%
+
+Phrase-level patterns reinforce these findings. The most common bigrams
+are substance abuse (612 occurrences), human services (508), and
+developmental disabilities (369), which appear in the social-community,
+economic stability, and healthcare access domains, respectively. The
+most common trigrams are behavioral health services (241), health care
+provider (189), and law enforcement agency (180), of which the first two
+are in the healthcare access domain and the last is in the
+social-community domain.
+
+\begin{figure}
+
+\centering{
+
+\includegraphics[width=0.65\linewidth,height=\textheight,keepaspectratio]{output/figures/rq1c_bigrams.png}
+
+}
+
+\caption{\label{fig-rq1c-bigrams}Top domain bigrams in mental health
+bills (RQ1c).}
+
+\end{figure}%
+
+\subsection{RQ2}\label{rq2}
+
+State-level comparisons show that, of all states, Washington exhibits
+the highest shares of bills mentioning most domains, including
+neighborhood and built environment (0.47) and discrimination, equity,
+and rights (0.23).
+
+\begin{figure}
+
+\centering{
+
+\includegraphics[width=0.65\linewidth,height=\textheight,keepaspectratio]{output/figures/rq2_state_share.png}
+
+}
+
+\caption{\label{fig-rq2-state}Share of mental health bills mentioning
+each domain, by state (RQ2a).}
+
+\end{figure}%
+
+Across the 2021 and 2023 sessions, domain shares remain relatively
+stable: education access language rises only slightly from 0.42 to 0.43
+of bills, economic stability from 0.328 to 0.332, and healthcare access
+from 0.40 to 0.42, while social-community references dip modestly from
+about 0.51 to 0.48. Discrimination-equity and neighborhood-environment
+mentions show similarly small shifts (roughly 0.11 to 0.09 and 0.22 to
+0.21, respectively), suggesting no dramatic reorientation of domain
+emphasis over the study window.
+
+By party control, divided governments have the highest shares of bills
+mentioning economic stability (about 45 percent) and education access
+(about 49 percent), whereas Democratic trifecta states show the highest
+shares for healthcare access (0.42), neighborhood and built environment
+(0.22), social-community context (0.51), and discrimination-equity
+language (0.12). However, Republican trifectas are not far behind on
+healthcare access (0.38), neighborhood and built environment (0.22), and
+social-community context (0.48), and they have a slightly higher share
+of economic stability mentions (0.34) than Democratic trifectas (0.31).
+
+\begin{figure}
+
+\centering{
+
+\includegraphics[width=0.65\linewidth,height=\textheight,keepaspectratio]{output/figures/rq2_party_share.png}
+
+}
+
+\caption{\label{fig-rq2-party}Share of mental health bills mentioning
+each domain, by party control (RQ2c).}
+
+\end{figure}%
+
+\subsection{RQ3}\label{rq3}
+
+To examine how language differs between bills with higher and lower SDOH
+intensity, I computed class-based TF-IDF for unigrams and bigrams in the
+high- and low-domain bill groups. High-domain unigrams skew toward broad
+policy language, including terms such as equity, sanction, prisoner, and
+hiv. In contrast, low-domain unigrams are more idiosyncratic and
+proper-noun-like, with examples including welch, emanuel, chris, and
+tamms, alongside niche medical or procedural terms like hyperbaric,
+psychosurgical, and mastectomy.
+
+As with unigrams, high-domain bigrams are coherent and policy-relevant,
+with examples such as certified mental, health assistant, mandatory
+prison, and designated crisis. Together, these bigrams highlight service
+delivery and justice or public-safety interfaces around mental health,
+such as crisis response and prison settings. In contrast, low-domain
+bigrams are dominated by procedural and fiscal language like
+appropriations project, project request, and project titled. Overall,
+high-domain bills show more substantively coherent SDOH-related language
+in both unigrams and bigrams, whereas low-domain bills mix project- and
+appropriations-oriented language with idiosyncratic proper nouns and
+medical terms.
+
+\begin{figure}
+
+\centering{
+
+\includegraphics[width=0.65\linewidth,height=\textheight,keepaspectratio]{output/figures/rq3a_distinctive_bigrams.png}
+
+}
+
+\caption{\label{fig-rq3a-distinctive}Distinctive bigrams in high-
+vs.~low-domain bills (RQ3a).}
+
+\end{figure}%
+
+To answer RQ3b, I compared organization (ORG) and geopolitical (GPE)
+entities between high- and low-domain bills using spaCy NER. I then
+plotted the top ORGs by total mentions per group, computed high:low
+mention ratios for ORGs appearing in both groups, and plotted the most
+frequent GPEs. In the first plot, I found that high-domain bills
+consistently reference state departments (e.g., Department of Public
+Health) and public insurance programs (e.g., Medicaid) that directly
+administer or finance mental health and SDOH-related services.
+Low-domain bills, by contrast, highlight codes and generic bodies (e.g.,
+The Task Force) rather than specific service agencies or payers.
+Surprisingly, the top low-domain ``ORG'' is a statute reference (Health
+and Safety Code), not an organization, illustrating NER
+misclassification. The second plot shows that when these agencies,
+payers, and program or act names appear at all, they are overwhelmingly
+concentrated in high-domain bills, with high:low ratios on the order of
+tens or even hundreds to one.
+
+In the GPE plot, both panels are dominated by state and federal
+references, with only modest differences: high-domain bills reference
+multiple large states and federal context, while low-domain bills lean
+slightly more on New York-centered internal references. Overall,
+high-domain bills disproportionately mention public payers and state
+health and human-services agencies, whereas low-domain bills instead
+emphasize statutory codes and task forces, with more NER artifacts.
+
+To answer RQ3c, I compared institutional reference rates for four
+categories---Schools, Medicaid, Local Government, and Housing---in high-
+vs.~low-domain bills using both n-gram pattern matching and entity-based
+matching (spaCy ORG/GPE; see Figure~\ref{fig-rq3c-reference}). Both
+methods agree that Medicaid references are dramatically more common in
+high-domain bills and that schools are mentioned about two to three
+times as often in high-domain bills as in low-domain bills. N-grams also
+show a clear gap for local government and housing, with high-domain
+bills much more likely to reference these institutions, while
+entity-based detection is sparse for these categories, suggesting
+local-government and housing references are often embedded in phrases
+that NER does not tag cleanly. Across all four categories, high-domain
+bills have higher institutional reference rates than low-domain bills,
+most strikingly for Medicaid and schools.
+
+\begin{figure}
+
+\centering{
+
+\includegraphics[width=0.65\linewidth,height=\textheight,keepaspectratio]{output/figures/rq3c_reference_rates.png}
+
+}
+
+\caption{\label{fig-rq3c-reference}Institutional references in high-
+vs.~low-domain bills (RQ3c).}
+
+\end{figure}%
+
+\subsection{RQ4}\label{rq4}
+
+To answer RQ4a, I used an LDA model to estimate document--topic
+proportions and examined both mean topic prevalence and dominant-topic
+counts. The most prevalent topics are Education \& Community, Advisory
+Bodies \& Task Forces, Insurance \& Medicaid Coverage, Criminal Justice,
+and Workforce Licensing, and together these cover roughly two thirds of
+bills as their dominant topics. The distribution is highly concentrated
+rather than flat, and explicitly clinical-care or facility-licensing
+topics sit near the bottom of the prevalence rankings.
+
+To answer RQ4b, I compared topic proportions with SDOH domain scores and
+produced a topic--domain heatmap of alignment (mean document--topic
+proportion differences between high-domain bills and the full corpus;
+see Figure~\ref{fig-rq4b-topic}). For Discrimination, Equity \& Rights,
+the strongest alignment is with Advisory Bodies \& Task Forces, with
+secondary alignment in Education \& Community and Policy Equity \&
+Conditions. For Education Access \& Quality, the Education \& Community
+topic shows the strongest positive alignment, providing a face-validity
+check that education-domain language concentrates in the
+education-themed topic. For Neighborhood \& Built Environment, the
+strongest alignments are with Criminal Justice and Involuntary \&
+Inpatient Treatment, with secondary alignment in Advisory Bodies \& Task
+Forces. Cross-domain, Advisory Bodies \& Task Forces and Involuntary \&
+Inpatient Treatment show positive alignment across multiple domains,
+while Insurance \& Medicaid Coverage shows negative alignment for all
+three focal domains, meaning that bills most strongly framed around
+education, equity, or neighborhood SDOH tend to devote less text to
+insurance and payer language than the corpus average.
+
+\begin{figure}
+
+\centering{
+
+\includegraphics[width=0.65\linewidth,height=\textheight,keepaspectratio]{output/figures/rq4b_topic_domain_heatmap.png}
+
+}
+
+\caption{\label{fig-rq4b-topic}Topic domain heatmap.}
+
+\end{figure}%
+
+To address RQ4c, I started by creating a year trend plot, which shows
+that all four SDOH-focal topics---Education \& Community, Criminal
+Justice, Insurance \& Medicaid Coverage, and Policy Equity \&
+Conditions---are present in each session year and change only gradually
+over time. Mean topic proportions increase slightly from 2021 to 2023,
+but there is no sharp break or reversal, suggesting incremental rather
+than dramatic growth in SDOH framing over this short window.
+
+At the state level, the heatmaps and state-domain interaction plot show
+that several topics are represented in every state, but some states
+emphasize certain topics more than others. Texas, for instance,
+emphasizes Education \& Community and Workforce Licensing far more,
+whereas Washington focuses on Involuntary \& Inpatient Treatment. No
+pattern of geographic size, region, or party control emerges from the
+data; every state seems to have its own unique topic emphasis pattern.
+
+\section{Discussion}\label{discussion}
+
+\subsection{Interpreting SDOH domain attention (RQ1 +
+RQ2)}\label{interpreting-sdoh-domain-attention-rq1-rq2}
+
+Across RQ1 and RQ2, the results show that SDOH language in state mental
+health bills is unevenly distributed across domains, but that each
+domain has both high-frequency and more specialized terms. In RQ1a and
+RQ1c, the most frequent unigrams and bigrams tend to come from every
+domain except discrimination, equity, and rights, but each domain also
+contains less common terms such as literacy, neighborhood, and health
+equity that occur relatively rarely. RQ1b shows that several of these
+lower-frequency terms, including literacy in education access,
+neighborhood and pollution in neighborhood-environment, and stigma and
+disparity in the discrimination-equity domain, have high mean TF-IDF
+scores, indicating that they are distinctive when they appear and tend
+to cluster in particular bills rather than diffusing across the corpus.
+Taken together, these patterns suggest that while all six domains are
+represented and share a mix of common and specialized language, some
+aspects of SDOH enter mental health legislation through more targeted,
+bill-specific vocabulary rather than broad, ubiquitous terms.
+
+RQ2 adds that domain attention also varies systematically by state and
+party control. Across states and party-control types, discrimination,
+equity, and rights and neighborhood and built environment consistently
+appear among the lowest-share domains, whereas education access and
+quality, health care access and quality, and social and community
+context are more routinely mentioned, even though their specific terms
+and phrases differ by context. These descriptive patterns indicate that
+both state context and partisan control align with different emphases
+within a shared SDOH framework, but neither factor alone fully explains
+cross-state variation in which domains are prominent in mental health
+bills.
+
+\subsection{High- vs.~low-domain bills
+(RQ3)}\label{high--vs.-low-domain-bills-rq3}
+
+The high- versus low-domain contrast in RQ3 shows that SDOH intensity is
+tied to different kinds of distinctive bill language: high-domain bills
+pair SDOH language with justice, crisis-response, and service-system
+terms, whereas low-domain bills concentrate on project scaffolding and
+narrow technical or locality-specific details. These patters suggest
+that high-domain bills are engaging more directly with problems,
+sanctions, and conditions, rather than narrow procedural detail, while
+low-domain bills lack that central focus and are often anchored in
+specific projects, appropriations, locations, or medical technologies
+rather than a general SDOH framing.
+
+These lexical differences are mirrored in the institutional references
+that appear most often in each group. High-domain bills invoke public
+payers and state health and human-services agencies far more often than
+low-domain bills, which instead highlight generic task forces and
+statutory code labels. Geopolitical entities, in contrast, show few
+differences between high- and low-domain bills, suggesting that
+place-based language is common across the corpus and does not
+meaningfully differentiate SDOH intensity. Finally, the institutional
+reference comparison for specific categories (Schools, Medicaid, Local
+Government, Housing) shows that high-domain bills are much more likely
+to reference the institutions, underscoring that SDOH-intensive
+legislation is tightly connected to key service and governance actors.
+
+\subsection{Topics and domains together
+(RQ4)}\label{topics-and-domains-together-rq4}
+
+The topic model results of RQ4a indicate that most introduced state
+mental health bills cluster around a small set of institutional and
+systems-oriented themes rather than being evenly distributed across many
+topics. Linking topics to SDOH domain scores shows that education access
+and quality aligns cleanly with the Education \& Community topic,
+discrimination, equity, and rights aligns most strongly with Advisory
+Bodies \& Task Forces and Policy Equity \& Conditions, and neighborhood
+and built environment aligns with Criminal Justice and Involuntary \&
+Inpatient Treatment, with advisory bodies again playing a supporting
+role. Advisory Bodies \& Task Forces and Involuntary \& Inpatient
+Treatment therefore play cross-domain roles, appearing more often in
+bills with high education, neighborhood, and equity scores. It also
+suggests that concerns about these domains are often routed through
+commissions, task forces, and procedural mechanisms, with justice-system
+and involuntary-treatment provisions incorporated as well. Also notable
+is that the Insurance \& Medicaid Coverage topic shows negative
+alignment with all three focal domains, indicating that bills framed
+most strongly around education, equity, or neighborhood SDOH tend to
+devote less text to insurance and payer language than the corpus
+average. Finally, the results of RQ4c show plainly that there is no
+clear pattern of topic-domain alignment by state or session year,
+leaving it unclear what factors drive topic emphasis.
+
+Taken together, the first two RQs suggest that state mental health bills
+most often frame upstream determinants through education, health care
+access, and social and community context, while discrimination, equity,
+and neighborhood conditions appear less frequently. The next RQ adds on
+to this picture by suggesting that bills with more SDOH language do
+indeed seem to have a greater focus on topics relevant to social
+determinants, particularly service delivery and justice-system
+interfaces. But RQ4 indicates that, at least in some domains, having
+more SDOH language can actually be associated with less emphasis on
+insurance and Medicaid coverage. Legislatures and advocates aiming to
+advance mental health equity could use these patterns to press for more
+routine incorporation of equity and neighborhood language, tied with
+insurance coverage, into mainstream mental health legislation.
+
+\section{Limitations}\label{limitations}
+
+This project has several limitations that shape how its findings should
+be interpreted. First, the keyword screen used to identify
+mental-health-relevant bills may have missed some relevant bills that do
+not use the screened terms in their titles or descriptions, and it may
+have included some bills that are only tangentially related to mental
+health. Second, the PDF-to-text extraction process removes visual markup
+(e.g., strikethrough or underlining) that may have substantive meaning
+different from the raw text. Third, the SDOH domain dictionary is a
+necessary simplification of a much richer conceptual space; even with
+literature-based term selection, inductive corrections, and targeted
+validation checks, some relevant language is missed and some borderline
+phrases are misclassified, especially in domains such as discrimination
+and neighborhood conditions. Fourth, the corpus itself is restricted to
+ten states, introduced bill versions, and regular sessions between 2021
+and 2024, meaning that the domain patterns observed here may not
+generalize to other jurisdictions, bill types, or time periods. Fifth,
+off-the-shelf models for named entities and topic modeling introduce
+artifacts: spaCy mislabels some statutes and formatting as organizations
+and places, and several LDA topics capture procedural or formatting
+conventions rather than substantive themes despite efforts to flag and
+exclude them from key comparisons. Finally, the comparative analyses by
+state, session year, and party control are descriptive rather than
+causal, so observed differences should be read as patterns of
+legislative attention, not as evidence that partisan control or state
+context directly causes changes in SDOH language.
+
+\section{Future research}\label{future-research}
+
+Future research could extend this analysis by expanding the corpus to
+additional states, longer time windows, and other types of
+mental-health-adjacent legislation to test whether these domain and
+topic patterns generalize beyond the current ten-state sample. Linking
+legislative attention patterns to implementation or outcome data would
+also help future work move beyond mapping how SDOH appear in bill text
+toward understanding whether and how those textual patterns relate to
+mental health policy change.
+
+\section{References}\label{references}
+
+\phantomsection\label{refs}
+\begin{CSLReferences}{1}{0}
+\bibitem[\citeproctext]{ref-alegriaSocialDeterminantsMental2018}
+Alegría, M., NeMoyer, A., Falgàs Bagué, I., Wang, Y., \& Alvarez, K.
+(2018). Social {Determinants} of {Mental Health}: {Where We Are} and
+{Where We Need} to {Go}. \emph{Current Psychiatry Reports},
+\emph{20}(11), 95. \url{https://doi.org/10.1007/s11920-018-0969-9}
+
+\bibitem[\citeproctext]{ref-gostinLegalDeterminantsHealth2019}
+Gostin, L. O., Monahan, J. T., Kaldor, J., DeBartolo, M., Friedman, E.
+A., Gottschalk, K., Kim, S. C., Alwan, A., Binagwaho, A., Burci, G. L.,
+Cabal, L., DeLand, K., Evans, T. G., Goosby, E., Hossain, S., Koh, H.,
+Ooms, G., Periago, M. R., Uprimny, R., \& Yamin, A. E. (2019). The legal
+determinants of health: Harnessing the power of law for global health
+and sustainable development. \emph{The Lancet}, \emph{393}(10183),
+1857--1910. \url{https://doi.org/10.1016/S0140-6736(19)30233-8}
+
+\bibitem[\citeproctext]{ref-grimmerTextDataPromise2013}
+Grimmer, J., \& Stewart, B. M. (2013). Text as {Data}: {The Promise} and
+{Pitfalls} of {Automatic Content Analysis Methods} for {Political
+Texts}. \emph{Political Analysis}, \emph{21}(3), 267--297.
+\url{https://doi.org/10.1093/pan/mps028}
+
+\bibitem[\citeproctext]{ref-kirbySOCIALDETERMINANTSMENTAL}
+Kirby, J., \& Slone, S. (2022). \emph{Social {Determinants} of {Mental
+Health}: {Strategies} for {State Government}}. Council of State
+Governments.
+
+\bibitem[\citeproctext]{ref-nelsonStatePoliciesThat2022}
+Nelson, K. L., Powell, B. J., Langellier, B., Lê-Scherban, F., Shattuck,
+P., Hoagwood, K., \& Purtle, J. (2022). State {Policies} that {Impact}
+the {Design} of {Children}'s {Mental Health Services}: {A Modified
+Delphi Study}. \emph{Administration and Policy in Mental Health},
+\emph{49}(5), 834--847. \url{https://doi.org/10.1007/s10488-022-01201-6}
+
+\bibitem[\citeproctext]{ref-popaModellingPolicyAction2025}
+Popa, M. (2025). Modelling policy action using natural language
+processing: Evidence for a long-run increase in policy activism in the
+{UK}. \emph{Journal of Computational Social Science}, \emph{8}(2), 47.
+\url{https://doi.org/10.1007/s42001-024-00353-9}
+
+\bibitem[\citeproctext]{ref-rotterSocialDeterminantsMental2022}
+Rotter, M., Compton, M., Samaranayake, D., Ehntholt, A., Baldwin, E.,
+Schaeffer, L., Feeney, S., \& Smith, T. E. (2022). The {Social
+Determinants} of {Mental Health}: {A Descriptive Study} of {State Mental
+Health Agencies}' {Priorities}. \emph{Community Mental Health Journal},
+\emph{58}(6), 1121--1129.
+\url{https://doi.org/10.1007/s10597-021-00921-7}
+
+\bibitem[\citeproctext]{ref-SocialDeterminantsHealtha}
+Social {Determinants} of {Health}. (n.d.). In \emph{Healthy People
+2030}.
+https://odphp.health.gov/healthypeople/priority-areas/social-determinants-health;
+{U.S. Department of Health and Human Services, Office of Disease
+Prevention and Health Promotion}.
+
+\bibitem[\citeproctext]{ref-takedaDeterminantsImplementationState1987}
+Takeda, S. G. (1987). \emph{Determinants and {Implementation} of {State
+Mental Health Policy}} {[}PhD thesis{]}. Stanford University.
+
+\bibitem[\citeproctext]{ref-whitmanAddressingSocialDeterminants}
+Whitman, A., Lew, N. D., Chappel, A., Aysola, V., Zuckerman, R., \&
+Sommers, B. D. (2022). \emph{Addressing {Social Determinants} of
+{Health}: {Examples} of {Successful Evidence-Based Strategies} and
+{Current Federal Efforts}} (HP-2022-12; p. 30). {Assistant Secretary for
+Planning and Evaluation, Office of Health Policy}.
+
+\end{CSLReferences}
+
+\end{document}
