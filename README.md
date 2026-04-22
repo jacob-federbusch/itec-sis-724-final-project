@@ -72,12 +72,7 @@ relate to concrete social determinant domains?**
 
 ## Key Finding
 
-SDOH language appears across all domains but unevenly — education, healthcare, and
-community framing are most common while equity and neighborhood framing are rarer.
-Bills with the highest SDOH intensity disproportionately reference public payers and
-health/human-services institutions. Topic models show upstream concerns often routed
-through education, advisory bodies, and justice-system themes rather than narrowly
-clinical topics.
+I find that all six social determinant domains are referenced in the corpus, but with uneven frequency and distribution. Bills with high social determinant content disproportionately reference public payers and health and human-services agencies, and topic models suggest that upstream concerns are often channeled through education, advisory bodies, and justice-system themes rather than narrowly clinical topics. These patterns highlight uneven but measurable legislative attention to upstream determinants in state mental health policy.
 
 ## Repository Contents
 
