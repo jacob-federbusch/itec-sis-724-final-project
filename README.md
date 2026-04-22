@@ -45,6 +45,13 @@ relate to concrete social determinant domains?**
   session starts (Florida's annual sessions aligned for comparability)
 - **Source:** LegiScan state bill data (JSON format)
 
+How to get original data:
+1. Open legiscan.com/datasets
+2. At the top of the page, you will see state codes (e.g., NY, IL, TX). Click on the code for the desired state.
+3. You will see a table with these columns: State, Year, Session, Modified, Exported, API JSON, CSV Basic. For each row whose years fall within 2021-2024, click the JSON button under API JSON to download the respective data.
+
+Keep in mind that the actual bill text is not in this data. You will need to use the doc_id from the downloaded JSON files to retrieve the full bill text through LegiScan API.
+
 ## Methods
 
 ### Inductive (Exploratory)
