@@ -1,28 +1,63 @@
-﻿# Raw bill text and large data files
-billtxt/
-rawbilltext/
-*.rds
-*.RData
+﻿# =============================================================================
+# LARGE INTERMEDIATE DATA FILES (too big or too bloated for GitHub)
+# =============================================================================
 
-# R and Python environment files
+# The single biggest offender — 1.5 GB, hard-blocked by GitHub
+data/topic_table_meta.rds
+
+# Large corpus tables (50–85 MB each — bloat repo history permanently)
+data/corpus_table_scored.rds
+data/corpus_table_scored.csv
+data/corpus_table_with_party_control.csv
+data/corpus_table.csv
+data/corpus_table_base.csv
+
+# =============================================================================
+# RAW AND DERIVED SOURCE DATA (re-downloadable or re-creatable)
+# =============================================================================
+
+raw_zips/
+unzipped_json/
+raw_billtext/
+bill_txt/
+
+# =============================================================================
+# R ENVIRONMENT AND GENERATED ARTIFACTS
+# =============================================================================
+
 .Rhistory
 .RData
 .Rproj.user/
+*.Rdb
+*.rdx
+
+# NOTE: *.rds is NOT globally excluded — your small RDS files in data/ are
+# valuable analytical outputs (bills_lda_model.rds, topic_table.rds, etc.)
+# and should be versioned. Only the specific large ones are excluded above.
+
+# =============================================================================
+# PYTHON ENVIRONMENT
+# =============================================================================
+
 __pycache__/
 *.pyc
+*.pyo
+.venv/
 .env
 
-# OS files
+# =============================================================================
+# OS AND EDITOR CLUTTER
+# =============================================================================
+
 .DS_Store
 Thumbs.db
+*.log
+.positron/
 
-# Raw zip and JSON data (too large / filenames too long)
-raw_zips/
-unzipped_json/
-bill_txt/
-raw_billtext/
+# =============================================================================
+# SCRATCH, NOTES, AND WORKING FILES (not part of final deliverable)
+# =============================================================================
 
-# Metadata and scratch files
 metadata.csv
 metadata_mental_health.csv
 retrieval_issues.csv
@@ -31,3 +66,4 @@ working_checklist.qmd
 project_code_template_test.qmd
 project_notes.qmd
 original_methodology_work.qmd
+project_tree.txt
